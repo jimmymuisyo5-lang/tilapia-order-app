@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>🔐 Admin - Tilapia Orders</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0ebe6;
+            color: #2d2d2d;
+            padding: 16px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .app-container {
+            max-width: 950px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 20px 18px 30px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.10);
+        }
+        .app-title {
+            font-size: 24px;
+            color: #1e3c2c;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid #e8e0d8;
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+        }
+        .app-title span {
+            background: #1e3c2c;
+            color: #fff;
+            font-size: 14px;
+            padding: 2px 14px;
+            border-radius: 30px;
+            margin-left: auto;
+        }
+        .admin-login { max-width: 360px; margin: 40px auto; text-align: center; }
+        .admin-login .lock-icon { font-size: 48px; margin-bottom: 10px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; color: #3d352e; }
+        input[type="password"] {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 16px;
+            border: 2px solid #ddd6cf;
+            border-radius: 14px;
+            background: #fcfaf8;
+            outline: none;
+        }
+        input[type="password"]:focus { border-color: #1e3c2c; background: #fff; }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 17px;
+            font-weight: 700;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-primary { background: #1e3c2c; color: #fff; }
+        .btn-primary:hover { background: #143021; transform: scale(0.98); }
+        .btn-danger { background: #c0392b; color: #fff; }
+        .btn-danger:hover { background: #a93226; }
+        .logout-row { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+        .logout-btn {
+            background: #c0392b;
+            color: #fff;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .admin-table-wrap { overflow-x: auto; margin-top: 12px; }
+        .admin-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 700px;
+        }
+        .admin-table th {
+            background: #1e3c2c;
+            color: #fff;
+            padding: 10px 8px;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .admin-table td {
+            padding: 10px 8px;
+            border-bottom: 1px solid #e8e0d8;
+            vertical-align: middle;
+        }
+        .admin-table tr:hover td { background: #f8f4f0; }
+        .admin-table select {
+            padding: 6px 8px;
+            font-size: 12px;
+            border-radius: 8px;
+            background: #fff;
+            border: 1px solid #ccc;
+            width: 100%;
+            max-width: 130px;
+        }
+        .admin-table .order-id-col { font-weight: 600; color: #1e3c2c; }
+        .admin-table .loc-col { font-size: 12px; color: #5a4f47; max-width: 120px; word-break: break-all; }
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-stage { background: #f1c40f; color: #2d2d2d; }
+        .badge-fry { background: #e67e22; color: #fff; }
+        .badge-delivered { background: #27ae60; color: #fff; }
+        .badge-processing { background: #3498db; color: #fff; }
+        .badge-ready { background: #2ecc71; color: #fff; }
+        .badge-fried { background: #8e44ad; color: #fff; }
+        .empty-state { text-align: center; padding: 40px 10px; color: #7a6f67; }
+        .empty-state .big-icon { font-size: 56px; margin-bottom: 10px; }
+        .text-muted { color: #7a6f67; font-size: 14px; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        @media (max-width: 600px) {
+            .admin-table { font-size: 11px; min-width: 520px; }
+            .admin-table td, .admin-table th { padding: 6px 4px; }
+            .admin-table select { font-size: 10px; padding: 4px 4px; max-width: 80px; }
+        }
+        .live-badge {
+            display: inline-block;
+            background: #27ae60;
+            color: #fff;
+            font-size: 11px;
+            padding: 2px 12px;
+            border-radius: 40px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        .status-banner {
+            background: #d4edda;
+            color: #155724;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <div class="app-title">
+            🔐 Admin Dashboard
+            <span>v1.0</span>
+        </div>
+
+        <!-- ===== LOGIN VIEW ===== -->
+        <div id="admin-login-view">
+            <div class="admin-login">
+                <div class="lock-icon">🔐</div>
+                <h2 style="margin-bottom:16px;">Admin Access</h2>
+                <div class="form-group">
+                    <label for="adminPassword">Enter Password</label>
+                    <input type="password" id="adminPassword" placeholder="Enter password" />
+                </div>
+                <button class="btn btn-primary" id="adminLoginBtn">Unlock Dashboard</button>
+                <div id="loginError" style="color:#c0392b; margin-top:10px; font-weight:600;"></div>
+            </div>
+        </div>
+
+        <!-- ===== DASHBOARD VIEW ===== -->
+        <div id="admin-dashboard" style="display:none;">
+            <div class="logout-row">
+                <span style="font-size:13px; color:#27ae60; margin-right:auto;">
+                    <span class="live-badge">● LIVE</span> Auto-refresh
+                </span>
+                <button class="logout-btn" id="adminLogoutBtn">🚪 Logout</button>
+            </div>
+
+            <div class="status-banner">
+                <span class="live-badge">● ONLINE</span> Connected to server
+            </div>
+
+            <div class="flex-between" style="margin-bottom:6px;">
+                <h2 style="font-size:20px;">📋 All Orders</h2>
+                <span style="font-size:14px; color:#7a6f67;" id="orderCount">0 orders</span>
+            </div>
+            <p class="text-muted" style="margin-bottom:12px;">Oldest orders shown first. Update stage &amp; fry status.</p>
+
+            <div id="ordersListContainer">
+                <!-- populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            'use strict';
+
+            const API_URL = window.location.origin + '/api/orders';
+            const ADMIN_PASSWORD = 'Jimmy@54321';
+
+            const adminLoginView = document.getElementById('admin-login-view');
+            const adminDashboard = document.getElementById('admin-dashboard');
+            const adminPassword = document.getElementById('adminPassword');
+            const adminLoginBtn = document.getElementById('adminLoginBtn');
+            const loginError = document.getElementById('loginError');
+            const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+            const ordersListContainer = document.getElementById('ordersListContainer');
+            const orderCount = document.getElementById('orderCount');
+
+            let isAdminLoggedIn = false;
+            let refreshInterval = null;
+
+            async function fetchOrders() {
+                try {
+                    const res = await fetch(API_URL);
+                    if (!res.ok) throw new Error('Failed to fetch orders');
+                    return await res.json();
+                } catch (err) {
+                    console.error('Error fetching orders:', err);
+                    return [];
+                }
+            }
+
+            async function updateOrder(orderId, updates) {
+                try {
+                    const res = await fetch(`${API_URL}/${orderId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updates),
+                    });
+                    return await res.json();
+                } catch (err) {
+                    console.error('Error updating order:', err);
+                }
+            }
+
+            function formatTimestamp(iso) {
+                const d = new Date(iso);
+                return d.toLocaleString('en-KE', { hour12: true });
+            }
+
+            async function renderAdminOrders() {
+                const orders = await fetchOrders();
+                orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+                orderCount.textContent = `${orders.length} order${orders.length !== 1 ? 's' : ''}`;
+
+                if (orders.length === 0) {
+                    ordersListContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="big-icon">📭</div>
+                            <h3>No orders yet</h3>
+                            <p class="text-muted">Orders placed by customers will appear here.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = `<div class="admin-table-wrap"><table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Size</th>
+                            <th>Price</th>
+                            <th>Phone</th>
+                            <th>Area</th>
+                            <th>Stage</th>
+                            <th>Fry Status</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+                orders.forEach((o) => {
+                    html += `
+                        <tr>
+                            <td class="order-id-col">#${o.orderId}</td>
+                            <td>${o.size}</td>
+                            <td>KES ${o.price}</td>
+                            <td>${o.phoneNumber}</td>
+                            <td class="loc-col" title="${o.deliveryArea || ''}">${o.deliveryArea || '—'}</td>
+                            <td>
+                                <select class="admin-stage-select" data-orderid="${o.orderId}">
+                                    <option value="Order Received" ${o.orderStage === 'Order Received' ? 'selected' : ''}>Order Received</option>
+                                    <option value="Processing" ${o.orderStage === 'Processing' ? 'selected' : ''}>Processing</option>
+                                    <option value="Ready for Pickup" ${o.orderStage === 'Ready for Pickup' ? 'selected' : ''}>Ready for Pickup</option>
+                                    <option value="Delivered" ${o.orderStage === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                </select>
+                            </td>
+                            <td>
+                                <select class="admin-fry-select" data-orderid="${o.orderId}">
+                                    <option value="Not Fried" ${o.fryStatus === 'Not Fried' ? 'selected' : ''}>Not Fried</option>
+                                    <option value="Fried" ${o.fryStatus === 'Fried' ? 'selected' : ''}>Fried</option>
+                                </select>
+                            </td>
+                            <td style="font-size:11px; color:#7a6f67;">${o.createdAt || formatTimestamp(o.timestamp)}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table></div>`;
+                ordersListContainer.innerHTML = html;
+
+                document.querySelectorAll('.admin-stage-select').forEach((sel) => {
+                    sel.addEventListener('change', function() {
+                        updateOrder(this.dataset.orderid, { orderStage: this.value });
+                    });
+                });
+
+                document.querySelectorAll('.admin-fry-select').forEach((sel) => {
+                    sel.addEventListener('change', function() {
+                        updateOrder(this.dataset.orderid, { fryStatus: this.value });
+                    });
+                });
+            }
+
+            function adminLogin() {
+                const pwd = adminPassword.value.trim();
+                if (pwd === ADMIN_PASSWORD) {
+                    isAdminLoggedIn = true;
+                    adminLoginView.style.display = 'none';
+                    adminDashboard.style.display = 'block';
+                    loginError.textContent = '';
+                    renderAdminOrders();
+
+                    if (refreshInterval) clearInterval(refreshInterval);
+                    refreshInterval = setInterval(() => {
+                        if (isAdminLoggedIn) renderAdminOrders();
+                    }, 10000);
+                } else {
+                    loginError.textContent = '❌ Incorrect password. Try again.';
+                    adminPassword.value = '';
+                    adminPassword.focus();
+                }
+            }
+
+            function adminLogout() {
+                isAdminLoggedIn = false;
+                if (refreshInterval) {
+                    clearInterval(refreshInterval);
+                    refreshInterval = null;
+                }
+                adminLoginView.style.display = 'block';
+                adminDashboard.style.display = 'none';
+                adminPassword.value = '';
+                loginError.textContent = '';
+            }
+
+            adminLoginBtn.addEventListener('click', adminLogin);
+            adminPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') adminLogin(); });
+            adminLogoutBtn.addEventListener('click', adminLogout);
+
+            console.log('🔐 Admin App ready.');
+        })();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,57 @@
+[
+  {
+    "orderId": "TIL-260812-236",
+    "size": 7,
+    "price": 550,
+    "phoneNumber": "0114208299",
+    "deliveryArea": "Shimo",
+    "orderStage": "Processing",
+    "fryStatus": "Fried",
+    "timestamp": "2026-08-12T17:06:01.459Z",
+    "createdAt": "12/08/2026, 8:06:01 pm"
+  },
+  {
+    "orderId": "TIL-260812-765",
+    "size": 7,
+    "price": 550,
+    "phoneNumber": "0114208299",
+    "deliveryArea": "Shimo",
+    "orderStage": "Order Received",
+    "fryStatus": "Fried",
+    "timestamp": "2026-08-12T17:06:05.629Z",
+    "createdAt": "12/08/2026, 8:06:05 pm"
+  },
+  {
+    "orderId": "TIL-260812-944",
+    "size": 7,
+    "price": 550,
+    "phoneNumber": "0758253695",
+    "deliveryArea": "Juja",
+    "orderStage": "Order Received",
+    "fryStatus": "Fried",
+    "timestamp": "2026-08-12T17:13:04.799Z",
+    "createdAt": "12/08/2026, 8:13:04 pm"
+  },
+  {
+    "orderId": "TIL-260812-459",
+    "size": 7,
+    "price": 550,
+    "phoneNumber": "0758253695",
+    "deliveryArea": "Juja",
+    "orderStage": "Order Received",
+    "fryStatus": "Fried",
+    "timestamp": "2026-08-12T17:25:33.452Z",
+    "createdAt": "12/08/2026, 8:25:33 pm"
+  },
+  {
+    "orderId": "TIL-260812-873",
+    "size": 9,
+    "price": 650,
+    "phoneNumber": "0114208299",
+    "deliveryArea": "Shimo",
+    "orderStage": "Delivered",
+    "fryStatus": "Fried",
+    "timestamp": "2026-08-12T17:27:41.948Z",
+    "createdAt": "12/08/2026, 8:27:41 pm"
+  }
+]
