@@ -1,160 +1,888 @@
-const express = require('express');
-const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>🐟 Tilapia Order - Customer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f0eb;
+            color: #2d2d2d;
+            padding: 16px;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .app-container {
+            max-width: 480px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 24px;
+            padding: 20px 18px 30px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.10);
+        }
+        .app-title {
+            font-size: 24px;
+            color: #1e3c2c;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 2px solid #e8e0d8;
+            padding-bottom: 14px;
+            margin-bottom: 20px;
+        }
+        .app-title span {
+            background: #1e3c2c;
+            color: #fff;
+            font-size: 14px;
+            padding: 2px 14px;
+            border-radius: 30px;
+            margin-left: auto;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: #3d352e;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        select,
+        input[type="tel"],
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 14px 16px;
+            font-size: 16px;
+            border: 2px solid #ddd6cf;
+            border-radius: 14px;
+            background: #fcfaf8;
+            outline: none;
+        }
+        select:focus,
+        input:focus {
+            border-color: #1e3c2c;
+            background: #fff;
+        }
+        .price-display {
+            background: #f0ebe6;
+            padding: 12px 18px;
+            border-radius: 14px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1e3c2c;
+            display: inline-block;
+        }
+        .price-note {
+            font-size: 13px;
+            color: #7a6f67;
+            margin-top: 4px;
+            font-style: italic;
+        }
+        .btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 17px;
+            font-weight: 700;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .btn-primary {
+            background: #1e3c2c;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #143021;
+            transform: scale(0.98);
+        }
+        .btn-secondary {
+            background: #e8e0d8;
+            color: #2d2d2d;
+        }
+        .btn-secondary:hover {
+            background: #d5ccc2;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #1e3c2c;
+            color: #1e3c2c;
+        }
+        .btn-outline:hover {
+            background: #1e3c2c;
+            color: #fff;
+        }
+        .btn-danger {
+            background: #c0392b;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #a93226;
+        }
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 10px 16px;
+            background: #f8f4f0;
+            border-radius: 40px;
+            border: 2px solid #ddd6cf;
+        }
+        .toggle-container span {
+            font-weight: 600;
+            font-size: 15px;
+            color: #3d352e;
+        }
+        .toggle-switch {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            flex-shrink: 0;
+            background: #ccc;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        .toggle-switch.active {
+            background: #1e3c2c;
+        }
+        .toggle-switch .slider {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            background: #fff;
+            border-radius: 50%;
+            transition: 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        .toggle-switch.active .slider {
+            left: 27px;
+        }
+        .toggle-label {
+            font-weight: 600;
+            font-size: 15px;
+            min-width: 80px;
+        }
+        .order-card {
+            background: #fcfaf8;
+            border-radius: 18px;
+            padding: 18px;
+            border: 1px solid #e8e0d8;
+            margin-bottom: 16px;
+        }
+        .order-card .order-id {
+            font-weight: 700;
+            color: #1e3c2c;
+            font-size: 18px;
+        }
+        .order-card .meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            margin-top: 8px;
+            font-size: 14px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .badge-stage {
+            background: #f1c40f;
+            color: #2d2d2d;
+        }
+        .badge-fry {
+            background: #e67e22;
+            color: #fff;
+        }
+        .badge-delivered {
+            background: #27ae60;
+            color: #fff;
+        }
+        .badge-processing {
+            background: #3498db;
+            color: #fff;
+        }
+        .badge-ready {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .badge-fried {
+            background: #8e44ad;
+            color: #fff;
+        }
+        .contact-banner {
+            background: #eafaf1;
+            border-left: 6px solid #25d366;
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin: 20px 0 10px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px 12px;
+        }
+        .contact-banner .icon {
+            font-size: 24px;
+        }
+        .contact-banner .text {
+            font-size: 15px;
+            font-weight: 500;
+            flex: 1;
+        }
+        .contact-banner .text strong {
+            color: #1e3c2c;
+        }
+        .contact-banner .actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+        .contact-banner .actions a {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            color: #fff;
+        }
+        .contact-banner .actions .call-btn {
+            background: #2d7b46;
+        }
+        .contact-banner .actions .wa-btn {
+            background: #25d366;
+        }
+        .text-muted {
+            color: #7a6f67;
+            font-size: 14px;
+        }
+        .text-center {
+            text-align: center;
+        }
+        .mt-16 {
+            margin-top: 16px;
+        }
+        .mb-8 {
+            margin-bottom: 8px;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .flex-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .gap-8 {
+            gap: 8px;
+        }
+        .welcome-banner {
+            background: #1e3c2c;
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 14px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .welcome-banner .name {
+            font-weight: 700;
+            font-size: 16px;
+        }
+        .welcome-banner .logout-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .tab-switch {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .tab-switch button {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd6cf;
+            border-radius: 40px;
+            background: transparent;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .tab-switch button.active {
+            background: #1e3c2c;
+            color: #fff;
+            border-color: #1e3c2c;
+        }
+        @media (max-width: 500px) {
+            .contact-banner {
+                flex-direction: column;
+                align-items: stretch;
+                text-align: center;
+            }
+            .contact-banner .actions {
+                justify-content: center;
+                margin-left: 0;
+            }
+        }
+        .live-badge {
+            display: inline-block;
+            background: #27ae60;
+            color: #fff;
+            font-size: 11px;
+            padding: 2px 12px;
+            border-radius: 40px;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% {
+                opacity: 0.7;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0.7;
+            }
+        }
+        .status-banner {
+            background: #d4edda;
+            color: #155724;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        .history-empty {
+            text-align: center;
+            padding: 30px 10px;
+            color: #7a6f67;
+        }
+        .history-empty .big-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
 
-const app = express();
-const PORT = process.env.PORT || 3000;
+    <div class="app-container">
+        <div class="app-title">
+            🐟 Tilapia Order
+            <span>Customer</span>
+        </div>
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+        <div class="status-banner">
+            <span class="live-badge">● ONLINE</span> Connected to server
+        </div>
 
-// Serve static files
-app.use(express.static(path.join(__dirname, 'public')));
+        <!-- ============================================================ -->
+        <!-- LOGIN / REGISTER VIEW -->
+        <!-- ============================================================ -->
+        <div id="auth-view">
+            <div class="tab-switch">
+                <button class="active" id="loginTab">Login</button>
+                <button id="registerTab">Register</button>
+            </div>
 
-// ============================================================
-// DATA STORAGE
-// ============================================================
+            <!-- ---- LOGIN FORM ---- -->
+            <div id="login-form">
+                <h2 style="font-size:20px; margin-bottom:6px;">Welcome Back</h2>
+                <p class="text-muted" style="margin-bottom:16px;">Login to view your orders.</p>
 
-const DATA_FILE = path.join(__dirname, 'data.json');
+                <div class="form-group">
+                    <label for="loginPhone">Phone Number</label>
+                    <input type="tel" id="loginPhone" placeholder="e.g. 0712345678" />
+                </div>
 
-function readData() {
-    try {
-        const data = fs.readFileSync(DATA_FILE, 'utf8');
-        return JSON.parse(data);
-    } catch (err) {
-        return { orders: [], customers: [] };
-    }
-}
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" placeholder="Enter your password" />
+                </div>
 
-function writeData(data) {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-}
+                <button class="btn btn-primary" id="loginBtn">🔑 Login</button>
+                <div id="loginFeedback" style="margin-top:12px; font-weight:600; font-size:15px;"></div>
+            </div>
 
-// ============================================================
-// API ROUTES - CUSTOMERS
-// ============================================================
+            <!-- ---- REGISTER FORM ---- -->
+            <div id="register-form" style="display:none;">
+                <h2 style="font-size:20px; margin-bottom:6px;">Create Account</h2>
+                <p class="text-muted" style="margin-bottom:16px;">Sign up to start ordering.</p>
 
-// Register a new customer
-app.post('/api/register', (req, res) => {
-    const db = readData();
-    const { phoneNumber, password, name } = req.body;
+                <div class="form-group">
+                    <label for="registerName">Full Name</label>
+                    <input type="text" id="registerName" placeholder="e.g. John Doe" />
+                </div>
 
-    // Check if customer already exists
-    const existing = db.customers.find(c => c.phoneNumber === phoneNumber);
-    if (existing) {
-        return res.status(400).json({ error: 'Phone number already registered' });
-    }
+                <div class="form-group">
+                    <label for="registerPhone">Phone Number</label>
+                    <input type="tel" id="registerPhone" placeholder="e.g. 0712345678" />
+                </div>
 
-    // Create new customer
-    const newCustomer = {
-        id: Date.now().toString(),
-        phoneNumber: phoneNumber,
-        password: password, // In production, hash this!
-        name: name || 'Customer',
-        createdAt: new Date().toISOString()
-    };
+                <div class="form-group">
+                    <label for="registerPassword">Password</label>
+                    <input type="password" id="registerPassword" placeholder="Create a password" />
+                </div>
 
-    db.customers.push(newCustomer);
-    writeData(db);
+                <button class="btn btn-primary" id="registerBtn">📝 Register</button>
+                <div id="registerFeedback" style="margin-top:12px; font-weight:600; font-size:15px;"></div>
+            </div>
+        </div>
 
-    // Return customer info without password
-    const { password: _, ...customerWithoutPassword } = newCustomer;
-    res.status(201).json({
-        success: true,
-        message: 'Registration successful',
-        customer: customerWithoutPassword
-    });
-});
+        <!-- ============================================================ -->
+        <!-- ORDER PLACING VIEW (After Login) -->
+        <!-- ============================================================ -->
+        <div id="order-view" style="display:none;">
+            <!-- Welcome Banner -->
+            <div class="welcome-banner">
+                <span class="name">👋 Welcome, <span id="customerName">Customer</span></span>
+                <button class="logout-btn" id="logoutBtn">Logout</button>
+            </div>
 
-// Login customer
-app.post('/api/login', (req, res) => {
-    const db = readData();
-    const { phoneNumber, password } = req.body;
+            <!-- Tab Switch: Place Order / History -->
+            <div class="tab-switch">
+                <button class="active" id="orderTab">📝 Place Order</button>
+                <button id="historyTab">📋 My Orders</button>
+            </div>
 
-    const customer = db.customers.find(c => c.phoneNumber === phoneNumber);
-    if (!customer) {
-        return res.status(401).json({ error: 'Phone number not found' });
-    }
+            <!-- ---- PLACE ORDER ---- -->
+            <div id="place-order-view">
+                <h2 style="font-size:20px; margin-bottom:6px;">Place Your Order</h2>
+                <p class="text-muted" style="margin-bottom:16px;">Select size, delivery area &amp; submit.</p>
 
-    if (customer.password !== password) {
-        return res.status(401).json({ error: 'Incorrect password' });
-    }
+                <div class="form-group">
+                    <label for="fishSize">Fish Size</label>
+                    <select id="fishSize">
+                        <option value="5">Size 5</option>
+                        <option value="6">Size 6</option>
+                        <option value="7" selected>Size 7</option>
+                        <option value="8">Size 8</option>
+                        <option value="9">Size 9</option>
+                        <option value="10">Size 10</option>
+                    </select>
+                </div>
 
-    // Return customer info without password
-    const { password: _, ...customerWithoutPassword } = customer;
-    res.json({
-        success: true,
-        message: 'Login successful',
-        customer: customerWithoutPassword
-    });
-});
+                <div class="form-group">
+                    <label>Price</label>
+                    <div class="price-display" id="priceDisplay">KES 550</div>
+                    <div class="price-note">* Price is exclusive of delivery fees</div>
+                </div>
 
-// Get customer orders
-app.get('/api/customer/:phoneNumber/orders', (req, res) => {
-    const db = readData();
-    const phoneNumber = req.params.phoneNumber;
+                <div class="form-group">
+                    <label>Frying Preference</label>
+                    <div class="toggle-container">
+                        <span>🍽️</span>
+                        <span class="toggle-label" id="fryLabel">Not Fried</span>
+                        <div class="toggle-switch" id="fryToggle">
+                            <div class="slider"></div>
+                        </div>
+                        <span>🔥</span>
+                    </div>
+                    <input type="hidden" id="fryStatus" value="Not Fried" />
+                </div>
 
-    const customer = db.customers.find(c => c.phoneNumber === phoneNumber);
-    if (!customer) {
-        return res.status(404).json({ error: 'Customer not found' });
-    }
+                <div class="form-group">
+                    <label for="deliveryArea">Delivery Area <span style="font-weight:400; color:#7a6f67;">(Please provide a detailed place of delivery)</span></label>
+                    <input type="text" id="deliveryArea" placeholder="e.g. Nairobi, Kasarani, House No. 12" />
+                </div>
 
-    const orders = db.orders.filter(o => o.phoneNumber === phoneNumber);
-    res.json(orders);
-});
+                <button class="btn btn-primary" id="submitOrderBtn">🛒 Submit Order</button>
+                <div id="submitFeedback" style="margin-top:12px; font-weight:600; font-size:15px;"></div>
+            </div>
 
-// ============================================================
-// API ROUTES - ORDERS
-// ============================================================
+            <!-- ---- ORDER HISTORY ---- -->
+            <div id="order-history-view" style="display:none;">
+                <h2 style="font-size:20px; margin-bottom:6px;">📋 My Orders</h2>
+                <p class="text-muted" style="margin-bottom:16px;">View all your past and current orders.</p>
+                <div id="orderHistoryList">
+                    <!-- populated by JS -->
+                </div>
+            </div>
+        </div>
 
-// GET all orders
-app.get('/api/orders', (req, res) => {
-    const db = readData();
-    res.json(db.orders);
-});
+        <!-- ============================================================ -->
+        <!-- CONTACT BANNER (Always visible) -->
+        <!-- ============================================================ -->
+        <div class="contact-banner">
+            <span class="icon">📞</span>
+            <div class="text">
+                <strong>In case of questions,</strong> call or WhatsApp:
+            </div>
+            <div class="actions">
+                <a href="tel:0114208299" class="call-btn">📞 Call</a>
+                <a href="https://wa.me/254114208299" target="_blank" class="wa-btn">💬 WhatsApp</a>
+            </div>
+        </div>
+    </div>
 
-// POST new order
-app.post('/api/orders', (req, res) => {
-    const db = readData();
-    const newOrder = req.body;
-    db.orders.push(newOrder);
-    writeData(db);
-    res.status(201).json(newOrder);
-});
+    <!-- ============================================================ -->
+    <!-- JAVASCRIPT -->
+    <!-- ============================================================ -->
+    <script>
+        (function() {
+            'use strict';
 
-// PUT update an order
-app.put('/api/orders/:orderId', (req, res) => {
-    const db = readData();
-    const orderId = req.params.orderId;
-    const updates = req.body;
+            const API_URL = window.location.origin + '/api';
+            const PRICES = { 5: 450, 6: 500, 7: 550, 8: 600, 9: 650, 10: 700 };
 
-    const index = db.orders.findIndex(o => o.orderId === orderId);
-    if (index === -1) {
-        return res.status(404).json({ error: 'Order not found' });
-    }
+            // ===== DOM REFS =====
+            const authView = document.getElementById('auth-view');
+            const orderView = document.getElementById('order-view');
+            const customerName = document.getElementById('customerName');
+            const logoutBtn = document.getElementById('logoutBtn');
 
-    db.orders[index] = { ...db.orders[index], ...updates };
-    writeData(db);
-    res.json(db.orders[index]);
-});
+            // Auth
+            const loginTab = document.getElementById('loginTab');
+            const registerTab = document.getElementById('registerTab');
+            const loginForm = document.getElementById('login-form');
+            const registerForm = document.getElementById('register-form');
+            const loginPhone = document.getElementById('loginPhone');
+            const loginPassword = document.getElementById('loginPassword');
+            const loginBtn = document.getElementById('loginBtn');
+            const loginFeedback = document.getElementById('loginFeedback');
+            const registerName = document.getElementById('registerName');
+            const registerPhone = document.getElementById('registerPhone');
+            const registerPassword = document.getElementById('registerPassword');
+            const registerBtn = document.getElementById('registerBtn');
+            const registerFeedback = document.getElementById('registerFeedback');
 
-// DELETE an order
-app.delete('/api/orders/:orderId', (req, res) => {
-    const db = readData();
-    const orderId = req.params.orderId;
-    db.orders = db.orders.filter(o => o.orderId !== orderId);
-    writeData(db);
-    res.json({ message: 'Order deleted' });
-});
+            // Order
+            const orderTab = document.getElementById('orderTab');
+            const historyTab = document.getElementById('historyTab');
+            const placeOrderView = document.getElementById('place-order-view');
+            const orderHistoryView = document.getElementById('order-history-view');
+            const orderHistoryList = document.getElementById('orderHistoryList');
 
-// ============================================================
-// START SERVER
-// ============================================================
+            const fishSize = document.getElementById('fishSize');
+            const priceDisplay = document.getElementById('priceDisplay');
+            const deliveryArea = document.getElementById('deliveryArea');
+            const fryToggle = document.getElementById('fryToggle');
+            const fryLabel = document.getElementById('fryLabel');
+            const fryStatusHidden = document.getElementById('fryStatus');
+            const submitBtn = document.getElementById('submitOrderBtn');
+            const submitFeedback = document.getElementById('submitFeedback');
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🐟 Tilapia Order Server running at http://localhost:${PORT}`);
-    console.log(`📱 Customer App: http://localhost:${PORT}/customer.html`);
-    console.log(`🔐 Admin App: http://localhost:${PORT}/admin.html`);
-});
+            // ===== STATE =====
+            let currentCustomer = null;
+
+            // ===== STORAGE =====
+            function getOrders() {
+                try {
+                    const data = JSON.parse(localStorage.getItem('tilapia_orders')) || [];
+                    return data;
+                } catch { return []; }
+            }
+
+            function saveOrders(orders) {
+                localStorage.setItem('tilapia_orders', JSON.stringify(orders));
+            }
+
+            // ===== HELPERS =====
+            function generateOrderId() {
+                const now = new Date();
+                const d = now.getFullYear().toString().slice(-2);
+                const m = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const rand = String(Math.floor(100 + Math.random() * 900));
+                return `TIL-${d}${m}${day}-${rand}`;
+            }
+
+            function formatTimestamp(iso) {
+                const d = new Date(iso);
+                return d.toLocaleString('en-KE', { hour12: true });
+            }
+
+            function getStageBadgeClass(stage) {
+                const map = {
+                    'Order Received': 'badge-stage',
+                    'Processing': 'badge-processing',
+                    'Ready for Pickup': 'badge-ready',
+                    'Delivered': 'badge-delivered',
+                };
+                return map[stage] || 'badge-stage';
+            }
+
+            function getFryBadgeClass(status) {
+                return status === 'Fried' ? 'badge-fried' : 'badge-fry';
+            }
+
+            // ===== API CALLS =====
+            async function registerCustomer(name, phone, password) {
+                try {
+                    const res = await fetch(`${API_URL}/register`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, phoneNumber: phone, password })
+                    });
+                    return await res.json();
+                } catch (err) {
+                    console.error('Registration error:', err);
+                    return { error: 'Network error' };
+                }
+            }
+
+            async function loginCustomer(phone, password) {
+                try {
+                    const res = await fetch(`${API_URL}/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phoneNumber: phone, password })
+                    });
+                    return await res.json();
+                } catch (err) {
+                    console.error('Login error:', err);
+                    return { error: 'Network error' };
+                }
+            }
+
+            async function fetchCustomerOrders(phone) {
+                try {
+                    const res = await fetch(`${API_URL}/customer/${phone}/orders`);
+                    return await res.json();
+                } catch (err) {
+                    console.error('Fetch orders error:', err);
+                    return [];
+                }
+            }
+
+            async function submitOrderToServer(order) {
+                try {
+                    const res = await fetch(`${API_URL}/orders`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(order)
+                    });
+                    return await res.json();
+                } catch (err) {
+                    console.error('Submit order error:', err);
+                    throw err;
+                }
+            }
+
+            // ===== AUTH FUNCTIONS =====
+            function showAuthView() {
+                authView.style.display = 'block';
+                orderView.style.display = 'none';
+                currentCustomer = null;
+            }
+
+            function showOrderView(customer) {
+                currentCustomer = customer;
+                customerName.textContent = customer.name || 'Customer';
+                authView.style.display = 'none';
+                orderView.style.display = 'block';
+                loadOrderHistory();
+            }
+
+            async function handleLogin() {
+                const phone = loginPhone.value.trim();
+                const password = loginPassword.value.trim();
+
+                if (!phone) {
+                    loginFeedback.textContent = '⚠️ Please enter your phone number.';
+                    loginFeedback.style.color = '#c0392b';
+                    return;
+                }
+                if (!password) {
+                    loginFeedback.textContent = '⚠️ Please enter your password.';
+                    loginFeedback.style.color = '#c0392b';
+                    return;
+                }
+
+                loginFeedback.textContent = '⏳ Logging in...';
+                loginFeedback.style.color = '#3498db';
+
+                const result = await loginCustomer(phone, password);
+                if (result.error) {
+                    loginFeedback.textContent = '❌ ' + result.error;
+                    loginFeedback.style.color = '#c0392b';
+                } else {
+                    loginFeedback.textContent = '✅ ' + result.message;
+                    loginFeedback.style.color = '#27ae60';
+                    showOrderView(result.customer);
+                }
+            }
+
+            async function handleRegister() {
+                const name = registerName.value.trim();
+                const phone = registerPhone.value.trim();
+                const password = registerPassword.value.trim();
+
+                if (!name) {
+                    registerFeedback.textContent = '⚠️ Please enter your name.';
+                    registerFeedback.style.color = '#c0392b';
+                    return;
+                }
+                if (!phone) {
+                    registerFeedback.textContent = '⚠️ Please enter your phone number.';
+                    registerFeedback.style.color = '#c0392b';
+                    return;
+                }
+                if (!password || password.length < 4) {
+                    registerFeedback.textContent = '⚠️ Password must be at least 4 characters.';
+                    registerFeedback.style.color = '#c0392b';
+                    return;
+                }
+
+                registerFeedback.textContent = '⏳ Creating account...';
+                registerFeedback.style.color = '#3498db';
+
+                const result = await registerCustomer(name, phone, password);
+                if (result.error) {
+                    registerFeedback.textContent = '❌ ' + result.error;
+                    registerFeedback.style.color = '#c0392b';
+                } else {
+                    registerFeedback.textContent = '✅ ' + result.message + ' Please login.';
+                    registerFeedback.style.color = '#27ae60';
+                    // Switch to login tab
+                    switchAuthTab('login');
+                    loginPhone.value = phone;
+                }
+            }
+
+            function handleLogout() {
+                showAuthView();
+                // Reset forms
+                loginPassword.value = '';
+                loginFeedback.textContent = '';
+                registerFeedback.textContent = '';
+            }
+
+            // ===== AUTH TAB SWITCHING =====
+            function switchAuthTab(tab) {
+                if (tab === 'login') {
+                    loginTab.classList.add('active');
+                    registerTab.classList.remove('active');
+                    loginForm.style.display = 'block';
+                    registerForm.style.display = 'none';
+                    loginFeedback.textContent = '';
+                    registerFeedback.textContent = '';
+                } else {
+                    registerTab.classList.add('active');
+                    loginTab.classList.remove('active');
+                    registerForm.style.display = 'block';
+                    loginForm.style.display = 'none';
+                    loginFeedback.textContent = '';
+                    registerFeedback.textContent = '';
+                }
+            }
+
+            // ===== ORDER TAB SWITCHING =====
+            function switchOrderTab(tab) {
+                if (tab === 'order') {
+                    orderTab.classList.add('active');
+                    historyTab.classList.remove('active');
+                    placeOrderView.style.display = 'block';
+                    orderHistoryView.style.display = 'none';
+                } else {
+                    historyTab.classList.add('active');
+                    orderTab.classList.remove('active');
+                    placeOrderView.style.display = 'none';
+                    orderHistoryView.style.display = 'block';
+                    loadOrderHistory();
+                }
+            }
+
+            // ===== ORDER HISTORY =====
+            async function loadOrderHistory() {
+                if (!currentCustomer) return;
+
+                const orders = await fetchCustomerOrders(currentCustomer.phoneNumber);
+
+                if (orders.length === 0) {
+                    orderHistoryList.innerHTML = `
+                        <div class="history-empty">
+                            <div class="big-icon">📭</div>
+                            <h3>No orders yet</h3>
+                            <p class="text-muted">Place your first order today!</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+                orders.forEach((o) => {
+                    html += `
+                        <div class="order-card">
+                            <div class="flex-between">
+                                <span class="order-id">#${o.orderId}</span>
+                                <span style="font-size:13px; color:#7a6f67;">${o.createdAt || formatTimestamp(o.timestamp)}</span>
+                            </div>
+                            <div class="meta">
+                                <span>📏 Size: <strong>${o.size}</strong></span>
+                                <span>💰 Price: <strong>KES ${o.price}</strong></span>
+                            </div>
+                            <div class="meta">
+                                <span>📍 <strong>${o.deliveryArea || 'N/A'}</strong></span>
+                            </div>
+                            <div class="meta" style="margin-top:10px;">
+                                <span class="badge ${getStageBadgeClass(o.orderStage)}">${o.orderStage}</span>
+                                <span class="badge ${getFryBadgeClass(o.fryStatus)}">${o.fryStatus}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                orderHistoryList.innerHTML = html;
+            }
+
+            // ===== PLACE ORDER =====
+            function toggleFry() {
+                const isFried = fryToggle.classList.toggle('active');
+                fryLabel.textContent = isFried ? 'Fried' : 'Not Fried';
+                fryStatusHidden.value = isFried ? 'Fried' : 'Not Fried';
+            }
+
+            function updatePrice() {
+                const size = parseInt(fishSize.value, 10);
+                const price = PRICES[size] || 0;
+                priceDisplay.textContent = `KES ${price}`;
+                return price;
+            }
+
+            async function submitOrder() {
+                if (!currentCustomer) {
+                    submitFeedback.textContent = '⚠️ Please login first.';
+                    submitFeedback.style.color = '#c0392b';
+                    return;
+                }
+
+                const size = parseInt(fishSize.value, 10);
+                const price = PRICES[size];
+                const area = deliveryArea.value.trim();
+                const fryStatus = fryStatusHidden.value;
+
+                if (!area) {
+                    submitFeedback.textContent = '⚠️ Please
