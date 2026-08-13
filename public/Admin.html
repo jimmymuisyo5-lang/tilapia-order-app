@@ -5,7 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
     <title>🔐 Admin - Tilapia Orders</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f0ebe6;
@@ -17,7 +21,7 @@
             align-items: flex-start;
         }
         .app-container {
-            max-width: 950px;
+            max-width: 1000px;
             width: 100%;
             background: #ffffff;
             border-radius: 24px;
@@ -42,11 +46,28 @@
             border-radius: 30px;
             margin-left: auto;
         }
-        .admin-login { max-width: 360px; margin: 40px auto; text-align: center; }
-        .admin-login .lock-icon { font-size: 48px; margin-bottom: 10px; }
-        .form-group { margin-bottom: 18px; }
-        label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 4px; color: #3d352e; }
-        input[type="password"] {
+        .admin-login {
+            max-width: 360px;
+            margin: 40px auto;
+            text-align: center;
+        }
+        .admin-login .lock-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+            color: #3d352e;
+        }
+        input[type="password"],
+        input[type="tel"],
+        input[type="text"] {
             width: 100%;
             padding: 14px 16px;
             font-size: 16px;
@@ -55,7 +76,12 @@
             background: #fcfaf8;
             outline: none;
         }
-        input[type="password"]:focus { border-color: #1e3c2c; background: #fff; }
+        input[type="password"]:focus,
+        input[type="tel"]:focus,
+        input[type="text"]:focus {
+            border-color: #1e3c2c;
+            background: #fff;
+        }
         .btn {
             width: 100%;
             padding: 16px;
@@ -70,11 +96,40 @@
             justify-content: center;
             gap: 10px;
         }
-        .btn-primary { background: #1e3c2c; color: #fff; }
-        .btn-primary:hover { background: #143021; transform: scale(0.98); }
-        .btn-danger { background: #c0392b; color: #fff; }
-        .btn-danger:hover { background: #a93226; }
-        .logout-row { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+        .btn-primary {
+            background: #1e3c2c;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #143021;
+            transform: scale(0.98);
+        }
+        .btn-danger {
+            background: #c0392b;
+            color: #fff;
+        }
+        .btn-danger:hover {
+            background: #a93226;
+        }
+        .btn-secondary {
+            background: #e8e0d8;
+            color: #2d2d2d;
+        }
+        .btn-secondary:hover {
+            background: #d5ccc2;
+        }
+        .btn-success {
+            background: #27ae60;
+            color: #fff;
+        }
+        .btn-success:hover {
+            background: #1e8449;
+        }
+        .logout-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 16px;
+        }
         .logout-btn {
             background: #c0392b;
             color: #fff;
@@ -85,7 +140,10 @@
             cursor: pointer;
             font-size: 14px;
         }
-        .admin-table-wrap { overflow-x: auto; margin-top: 12px; }
+        .admin-table-wrap {
+            overflow-x: auto;
+            margin-top: 12px;
+        }
         .admin-table {
             width: 100%;
             border-collapse: collapse;
@@ -104,7 +162,9 @@
             border-bottom: 1px solid #e8e0d8;
             vertical-align: middle;
         }
-        .admin-table tr:hover td { background: #f8f4f0; }
+        .admin-table tr:hover td {
+            background: #f8f4f0;
+        }
         .admin-table select {
             padding: 6px 8px;
             font-size: 12px;
@@ -114,8 +174,16 @@
             width: 100%;
             max-width: 130px;
         }
-        .admin-table .order-id-col { font-weight: 600; color: #1e3c2c; }
-        .admin-table .loc-col { font-size: 12px; color: #5a4f47; max-width: 120px; word-break: break-all; }
+        .admin-table .order-id-col {
+            font-weight: 600;
+            color: #1e3c2c;
+        }
+        .admin-table .loc-col {
+            font-size: 12px;
+            color: #5a4f47;
+            max-width: 120px;
+            word-break: break-all;
+        }
         .badge {
             display: inline-block;
             padding: 4px 12px;
@@ -123,20 +191,68 @@
             font-size: 12px;
             font-weight: 600;
         }
-        .badge-stage { background: #f1c40f; color: #2d2d2d; }
-        .badge-fry { background: #e67e22; color: #fff; }
-        .badge-delivered { background: #27ae60; color: #fff; }
-        .badge-processing { background: #3498db; color: #fff; }
-        .badge-ready { background: #2ecc71; color: #fff; }
-        .badge-fried { background: #8e44ad; color: #fff; }
-        .empty-state { text-align: center; padding: 40px 10px; color: #7a6f67; }
-        .empty-state .big-icon { font-size: 56px; margin-bottom: 10px; }
-        .text-muted { color: #7a6f67; font-size: 14px; }
-        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        .badge-stage {
+            background: #f1c40f;
+            color: #2d2d2d;
+        }
+        .badge-fry {
+            background: #e67e22;
+            color: #fff;
+        }
+        .badge-delivered {
+            background: #27ae60;
+            color: #fff;
+        }
+        .badge-processing {
+            background: #3498db;
+            color: #fff;
+        }
+        .badge-ready {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .badge-fried {
+            background: #8e44ad;
+            color: #fff;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 10px;
+            color: #7a6f67;
+        }
+        .empty-state .big-icon {
+            font-size: 56px;
+            margin-bottom: 10px;
+        }
+        .text-muted {
+            color: #7a6f67;
+            font-size: 14px;
+        }
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .flex-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
         @media (max-width: 600px) {
-            .admin-table { font-size: 11px; min-width: 520px; }
-            .admin-table td, .admin-table th { padding: 6px 4px; }
-            .admin-table select { font-size: 10px; padding: 4px 4px; max-width: 80px; }
+            .admin-table {
+                font-size: 11px;
+                min-width: 520px;
+            }
+            .admin-table td,
+            .admin-table th {
+                padding: 6px 4px;
+            }
+            .admin-table select {
+                font-size: 10px;
+                padding: 4px 4px;
+                max-width: 80px;
+            }
         }
         .live-badge {
             display: inline-block;
@@ -148,9 +264,15 @@
             animation: pulse 2s infinite;
         }
         @keyframes pulse {
-            0% { opacity: 0.7; }
-            50% { opacity: 1; }
-            100% { opacity: 0.7; }
+            0% {
+                opacity: 0.7;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0.7;
+            }
         }
         .status-banner {
             background: #d4edda;
@@ -161,6 +283,62 @@
             font-weight: 600;
             text-align: center;
             margin-bottom: 16px;
+        }
+        /* Password Reset Section */
+        .reset-section {
+            background: #fef9e7;
+            border: 2px solid #f1c40f;
+            border-radius: 16px;
+            padding: 16px 18px;
+            margin-bottom: 20px;
+        }
+        .reset-section h3 {
+            color: #1e3c2c;
+            margin-bottom: 10px;
+        }
+        .reset-section .flex-wrap {
+            gap: 12px;
+        }
+        .reset-section .flex-wrap .form-group {
+            flex: 1;
+            min-width: 150px;
+            margin-bottom: 0;
+        }
+        .reset-section .flex-wrap .btn {
+            width: auto;
+            padding: 14px 28px;
+            min-width: 120px;
+        }
+        .reset-feedback {
+            margin-top: 8px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        /* Admin Tabs */
+        .admin-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        .admin-tabs button {
+            padding: 10px 20px;
+            border: 2px solid #ddd6cf;
+            border-radius: 40px;
+            background: transparent;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .admin-tabs button.active {
+            background: #1e3c2c;
+            color: #fff;
+            border-color: #1e3c2c;
+        }
+        .admin-tab-content {
+            display: none;
+        }
+        .admin-tab-content.active {
+            display: block;
         }
     </style>
 </head>
@@ -199,14 +377,52 @@
                 <span class="live-badge">● ONLINE</span> Connected to server
             </div>
 
-            <div class="flex-between" style="margin-bottom:6px;">
-                <h2 style="font-size:20px;">📋 All Orders</h2>
-                <span style="font-size:14px; color:#7a6f67;" id="orderCount">0 orders</span>
+            <!-- ===== ADMIN TABS ===== -->
+            <div class="admin-tabs">
+                <button class="active" data-tab="orders">📋 Orders</button>
+                <button data-tab="customers">👥 Customers</button>
             </div>
-            <p class="text-muted" style="margin-bottom:12px;">Oldest orders shown first. Update stage &amp; fry status.</p>
 
-            <div id="ordersListContainer">
-                <!-- populated by JS -->
+            <!-- ===== TAB 1: ORDERS ===== -->
+            <div class="admin-tab-content active" id="tab-orders">
+                <div class="flex-between" style="margin-bottom:6px;">
+                    <h2 style="font-size:20px;">📋 All Orders</h2>
+                    <span style="font-size:14px; color:#7a6f67;" id="orderCount">0 orders</span>
+                </div>
+                <p class="text-muted" style="margin-bottom:12px;">Oldest orders shown first. Update stage &amp; fry status.</p>
+                <div id="ordersListContainer">
+                    <!-- populated by JS -->
+                </div>
+            </div>
+
+            <!-- ===== TAB 2: CUSTOMERS ===== -->
+            <div class="admin-tab-content" id="tab-customers">
+                <h2 style="font-size:20px; margin-bottom:6px;">👥 Customer Management</h2>
+                <p class="text-muted" style="margin-bottom:12px;">View customers and reset their passwords.</p>
+
+                <!-- Password Reset Section -->
+                <div class="reset-section">
+                    <h3>🔑 Reset Customer Password</h3>
+                    <p class="text-muted" style="margin-bottom:12px;">Enter the customer's phone number and new password.</p>
+                    <div class="flex-wrap">
+                        <div class="form-group">
+                            <label for="resetPhone">Customer Phone Number</label>
+                            <input type="tel" id="resetPhone" placeholder="e.g. 0712345678" />
+                        </div>
+                        <div class="form-group">
+                            <label for="resetPassword">New Password</label>
+                            <input type="text" id="resetPassword" placeholder="Enter new password" />
+                        </div>
+                        <button class="btn btn-success" id="resetPasswordBtn">✅ Reset Password</button>
+                    </div>
+                    <div id="resetFeedback" class="reset-feedback"></div>
+                </div>
+
+                <!-- Customer List -->
+                <h3 style="font-size:17px; margin-bottom:10px;">All Registered Customers</h3>
+                <div id="customersListContainer">
+                    <!-- populated by JS -->
+                </div>
             </div>
         </div>
     </div>
@@ -215,9 +431,10 @@
         (function() {
             'use strict';
 
-            const API_URL = window.location.origin + '/api/orders';
+            const API_URL = window.location.origin + '/api';
             const ADMIN_PASSWORD = 'Jimmy@54321';
 
+            // ===== DOM REFS =====
             const adminLoginView = document.getElementById('admin-login-view');
             const adminDashboard = document.getElementById('admin-dashboard');
             const adminPassword = document.getElementById('adminPassword');
@@ -226,14 +443,30 @@
             const adminLogoutBtn = document.getElementById('adminLogoutBtn');
             const ordersListContainer = document.getElementById('ordersListContainer');
             const orderCount = document.getElementById('orderCount');
+            const customersListContainer = document.getElementById('customersListContainer');
+
+            // Reset password
+            const resetPhone = document.getElementById('resetPhone');
+            const resetPassword = document.getElementById('resetPassword');
+            const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+            const resetFeedback = document.getElementById('resetFeedback');
+
+            // Tabs
+            const adminTabs = document.querySelectorAll('.admin-tabs button');
+            const tabContents = {
+                orders: document.getElementById('tab-orders'),
+                customers: document.getElementById('tab-customers'),
+            };
 
             let isAdminLoggedIn = false;
             let refreshInterval = null;
 
+            // ============================================================
+            // API CALLS
+            // ============================================================
             async function fetchOrders() {
                 try {
-                    const res = await fetch(API_URL);
-                    if (!res.ok) throw new Error('Failed to fetch orders');
+                    const res = await fetch(`${API_URL}/orders`);
                     return await res.json();
                 } catch (err) {
                     console.error('Error fetching orders:', err);
@@ -241,9 +474,19 @@
                 }
             }
 
+            async function fetchCustomers() {
+                try {
+                    const res = await fetch(`${API_URL}/admin/customers`);
+                    return await res.json();
+                } catch (err) {
+                    console.error('Error fetching customers:', err);
+                    return [];
+                }
+            }
+
             async function updateOrder(orderId, updates) {
                 try {
-                    const res = await fetch(`${API_URL}/${orderId}`, {
+                    const res = await fetch(`${API_URL}/orders/${orderId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(updates),
@@ -254,9 +497,41 @@
                 }
             }
 
+            async function resetCustomerPassword(phoneNumber, newPassword) {
+                try {
+                    const res = await fetch(`${API_URL}/admin/reset-password`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ phoneNumber, newPassword }),
+                    });
+                    return await res.json();
+                } catch (err) {
+                    console.error('Error resetting password:', err);
+                    return { error: 'Network error' };
+                }
+            }
+
+            // ============================================================
+            // RENDER FUNCTIONS
+            // ============================================================
+
             function formatTimestamp(iso) {
                 const d = new Date(iso);
                 return d.toLocaleString('en-KE', { hour12: true });
+            }
+
+            function getStageBadgeClass(stage) {
+                const map = {
+                    'Order Received': 'badge-stage',
+                    'Processing': 'badge-processing',
+                    'Ready for Pickup': 'badge-ready',
+                    'Delivered': 'badge-delivered',
+                };
+                return map[stage] || 'badge-stage';
+            }
+
+            function getFryBadgeClass(status) {
+                return status === 'Fried' ? 'badge-fried' : 'badge-fry';
             }
 
             async function renderAdminOrders() {
@@ -334,6 +609,84 @@
                 });
             }
 
+            async function renderCustomers() {
+                const customers = await fetchCustomers();
+
+                if (customers.length === 0) {
+                    customersListContainer.innerHTML = `
+                        <div class="empty-state">
+                            <div class="big-icon">👤</div>
+                            <h3>No registered customers yet</h3>
+                            <p class="text-muted">Customers will appear here when they register.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = `<div class="admin-table-wrap"><table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Phone Number</th>
+                            <th>Registered</th>
+                        </tr>
+                    </thead>
+                    <tbody>`;
+
+                customers.forEach((c) => {
+                    const date = new Date(c.createdAt);
+                    const registered = date.toLocaleDateString('en-KE') + ' ' + date.toLocaleTimeString('en-KE', { hour12: true });
+                    html += `
+                        <tr>
+                            <td><strong>${c.name || 'Customer'}</strong></td>
+                            <td>${c.phoneNumber}</td>
+                            <td style="font-size:12px; color:#7a6f67;">${registered}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `</tbody></table></div>`;
+                customersListContainer.innerHTML = html;
+            }
+
+            // ============================================================
+            // PASSWORD RESET
+            // ============================================================
+            async function handleResetPassword() {
+                const phone = resetPhone.value.trim();
+                const newPassword = resetPassword.value.trim();
+
+                if (!phone) {
+                    resetFeedback.textContent = '⚠️ Please enter the customer\'s phone number.';
+                    resetFeedback.style.color = '#c0392b';
+                    return;
+                }
+                if (!newPassword || newPassword.length < 4) {
+                    resetFeedback.textContent = '⚠️ New password must be at least 4 characters.';
+                    resetFeedback.style.color = '#c0392b';
+                    return;
+                }
+
+                resetFeedback.textContent = '⏳ Resetting password...';
+                resetFeedback.style.color = '#3498db';
+
+                const result = await resetCustomerPassword(phone, newPassword);
+
+                if (result.error) {
+                    resetFeedback.textContent = '❌ ' + result.error;
+                    resetFeedback.style.color = '#c0392b';
+                } else {
+                    resetFeedback.textContent = '✅ ' + result.message;
+                    resetFeedback.style.color = '#27ae60';
+                    resetPassword.value = '';
+                    // Refresh customer list
+                    renderCustomers();
+                }
+            }
+
+            // ============================================================
+            // ADMIN LOGIN / LOGOUT
+            // ============================================================
             function adminLogin() {
                 const pwd = adminPassword.value.trim();
                 if (pwd === ADMIN_PASSWORD) {
@@ -342,11 +695,15 @@
                     adminDashboard.style.display = 'block';
                     loginError.textContent = '';
                     renderAdminOrders();
+                    renderCustomers();
 
                     if (refreshInterval) clearInterval(refreshInterval);
                     refreshInterval = setInterval(() => {
-                        if (isAdminLoggedIn) renderAdminOrders();
-                    }, 10000);
+                        if (isAdminLoggedIn) {
+                            renderAdminOrders();
+                            renderCustomers();
+                        }
+                    }, 15000);
                 } else {
                     loginError.textContent = '❌ Incorrect password. Try again.';
                     adminPassword.value = '';
@@ -366,11 +723,41 @@
                 loginError.textContent = '';
             }
 
+            // ============================================================
+            // TAB SWITCHING
+            // ============================================================
+            function switchAdminTab(tabId) {
+                adminTabs.forEach((btn) => {
+                    btn.classList.toggle('active', btn.dataset.tab === tabId);
+                });
+                Object.keys(tabContents).forEach((key) => {
+                    tabContents[key].classList.toggle('active', key === tabId);
+                });
+            }
+
+            // ============================================================
+            // EVENT LISTENERS
+            // ============================================================
             adminLoginBtn.addEventListener('click', adminLogin);
-            adminPassword.addEventListener('keydown', (e) => { if (e.key === 'Enter') adminLogin(); });
+            adminPassword.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') adminLogin();
+            });
             adminLogoutBtn.addEventListener('click', adminLogout);
 
+            resetPasswordBtn.addEventListener('click', handleResetPassword);
+            resetPassword.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') handleResetPassword();
+            });
+
+            adminTabs.forEach((btn) => {
+                btn.addEventListener('click', function() {
+                    switchAdminTab(this.dataset.tab);
+                });
+            });
+
             console.log('🔐 Admin App ready.');
+            console.log('📱 API URL:', API_URL);
+
         })();
     </script>
 
