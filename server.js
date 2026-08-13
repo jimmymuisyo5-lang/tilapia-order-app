@@ -18,7 +18,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // REPLACE THIS WITH YOUR ACTUAL CONNECTION STRING
 // Make sure <db_username> is replaced with your actual username (e.g., admin)
-const MONGODB_URI = 'mongodb+srv://admin:4r2ofixtNlfjGB5f@tilapia-order-app.5001h25.mongodb.net/?appName=Tilapia-order-app';
+const MONGODB_URI = 'mongodb+srv://Jimmylanguser:Jimmy%4054321@tilapia-order-app.5001h25.mongodb.net/?appName=Tilapia-order-app';
 
 let db;
 let ordersCollection;
