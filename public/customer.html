@@ -531,7 +531,7 @@
         </div>
 
         <!-- ============================================================ -->
-        <!-- CONTACT BANNER (Always visible) -->
+        <!-- CONTACT BANNER -->
         <!-- ============================================================ -->
         <div class="contact-banner">
             <span class="icon">📞</span>
@@ -552,6 +552,8 @@
         (function() {
             'use strict';
 
+            console.log('🚀 Customer App Loading...');
+
             const API_URL = window.location.origin + '/api';
             const PRICES = { 5: 450, 6: 500, 7: 550, 8: 600, 9: 650, 10: 700 };
 
@@ -559,7 +561,6 @@
             const authView = document.getElementById('auth-view');
             const orderView = document.getElementById('order-view');
             const customerName = document.getElementById('customerName');
-            const logoutBtn = document.getElementById('logoutBtn');
 
             // Auth
             const loginTab = document.getElementById('loginTab');
@@ -575,6 +576,7 @@
             const registerPassword = document.getElementById('registerPassword');
             const registerBtn = document.getElementById('registerBtn');
             const registerFeedback = document.getElementById('registerFeedback');
+            const logoutBtn = document.getElementById('logoutBtn');
 
             // Order
             const orderTab = document.getElementById('orderTab');
@@ -594,18 +596,6 @@
 
             // ===== STATE =====
             let currentCustomer = null;
-
-            // ===== STORAGE =====
-            function getOrders() {
-                try {
-                    const data = JSON.parse(localStorage.getItem('tilapia_orders')) || [];
-                    return data;
-                } catch { return []; }
-            }
-
-            function saveOrders(orders) {
-                localStorage.setItem('tilapia_orders', JSON.stringify(orders));
-            }
 
             // ===== HELPERS =====
             function generateOrderId() {
@@ -636,7 +626,9 @@
                 return status === 'Fried' ? 'badge-fried' : 'badge-fry';
             }
 
-            // ===== API CALLS =====
+            // ============================================================
+            // API CALLS
+            // ============================================================
             async function registerCustomer(name, phone, password) {
                 try {
                     const res = await fetch(`${API_URL}/register`, {
@@ -647,7 +639,7 @@
                     return await res.json();
                 } catch (err) {
                     console.error('Registration error:', err);
-                    return { error: 'Network error' };
+                    return { error: 'Network error. Please check your connection.' };
                 }
             }
 
@@ -661,7 +653,7 @@
                     return await res.json();
                 } catch (err) {
                     console.error('Login error:', err);
-                    return { error: 'Network error' };
+                    return { error: 'Network error. Please check your connection.' };
                 }
             }
 
@@ -689,7 +681,9 @@
                 }
             }
 
-            // ===== AUTH FUNCTIONS =====
+            // ============================================================
+            // AUTH FUNCTIONS
+            // ============================================================
             function showAuthView() {
                 authView.style.display = 'block';
                 orderView.style.display = 'none';
@@ -702,8 +696,13 @@
                 authView.style.display = 'none';
                 orderView.style.display = 'block';
                 loadOrderHistory();
+                // Switch to place order tab
+                switchOrderTab('order');
             }
 
+            // ============================================================
+            // LOGIN
+            // ============================================================
             async function handleLogin() {
                 const phone = loginPhone.value.trim();
                 const password = loginPassword.value.trim();
@@ -733,11 +732,17 @@
                 }
             }
 
+            // ============================================================
+            // REGISTER
+            // ============================================================
             async function handleRegister() {
+                console.log('📝 Register button clicked!');
+
                 const name = registerName.value.trim();
                 const phone = registerPhone.value.trim();
                 const password = registerPassword.value.trim();
 
+                // Validation
                 if (!name) {
                     registerFeedback.textContent = '⚠️ Please enter your name.';
                     registerFeedback.style.color = '#c0392b';
@@ -758,27 +763,40 @@
                 registerFeedback.style.color = '#3498db';
 
                 const result = await registerCustomer(name, phone, password);
+                console.log('Registration result:', result);
+
                 if (result.error) {
                     registerFeedback.textContent = '❌ ' + result.error;
                     registerFeedback.style.color = '#c0392b';
                 } else {
                     registerFeedback.textContent = '✅ ' + result.message + ' Please login.';
                     registerFeedback.style.color = '#27ae60';
-                    // Switch to login tab
+                    // Switch to login tab and fill phone number
                     switchAuthTab('login');
                     loginPhone.value = phone;
+                    loginPassword.value = '';
+                    loginFeedback.textContent = '✅ Account created! Please login.';
+                    loginFeedback.style.color = '#27ae60';
                 }
             }
 
+            // ============================================================
+            // LOGOUT
+            // ============================================================
             function handleLogout() {
                 showAuthView();
-                // Reset forms
                 loginPassword.value = '';
                 loginFeedback.textContent = '';
                 registerFeedback.textContent = '';
+                // Reset forms
+                registerName.value = '';
+                registerPhone.value = '';
+                registerPassword.value = '';
             }
 
-            // ===== AUTH TAB SWITCHING =====
+            // ============================================================
+            // AUTH TAB SWITCHING
+            // ============================================================
             function switchAuthTab(tab) {
                 if (tab === 'login') {
                     loginTab.classList.add('active');
@@ -797,7 +815,9 @@
                 }
             }
 
-            // ===== ORDER TAB SWITCHING =====
+            // ============================================================
+            // ORDER TAB SWITCHING
+            // ============================================================
             function switchOrderTab(tab) {
                 if (tab === 'order') {
                     orderTab.classList.add('active');
@@ -813,7 +833,9 @@
                 }
             }
 
-            // ===== ORDER HISTORY =====
+            // ============================================================
+            // ORDER HISTORY
+            // ============================================================
             async function loadOrderHistory() {
                 if (!currentCustomer) return;
 
@@ -858,7 +880,9 @@
                 orderHistoryList.innerHTML = html;
             }
 
-            // ===== PLACE ORDER =====
+            // ============================================================
+            // PLACE ORDER
+            // ============================================================
             function toggleFry() {
                 const isFried = fryToggle.classList.toggle('active');
                 fryLabel.textContent = isFried ? 'Fried' : 'Not Fried';
@@ -885,4 +909,125 @@
                 const fryStatus = fryStatusHidden.value;
 
                 if (!area) {
-                    submitFeedback.textContent = '⚠️ Please
+                    submitFeedback.textContent = '⚠️ Please enter a delivery area.';
+                    submitFeedback.style.color = '#c0392b';
+                    return;
+                }
+
+                const orderId = generateOrderId();
+                const now = new Date().toISOString();
+
+                const order = {
+                    orderId: orderId,
+                    size: size,
+                    price: price,
+                    phoneNumber: currentCustomer.phoneNumber,
+                    deliveryArea: area,
+                    orderStage: 'Order Received',
+                    fryStatus: fryStatus,
+                    timestamp: now,
+                    createdAt: formatTimestamp(now),
+                };
+
+                try {
+                    await submitOrderToServer(order);
+                    submitFeedback.textContent = '✅ Order placed successfully!';
+                    submitFeedback.style.color = '#27ae60';
+
+                    deliveryArea.value = '';
+                    if (fryToggle.classList.contains('active')) toggleFry();
+                    fishSize.value = '7';
+                    updatePrice();
+
+                    // Refresh order history
+                    loadOrderHistory();
+                } catch (err) {
+                    submitFeedback.textContent = '❌ Failed to submit order. Please try again.';
+                    submitFeedback.style.color = '#c0392b';
+                }
+            }
+
+            // ============================================================
+            // EVENT LISTENERS
+            // ============================================================
+
+            console.log('🔗 Attaching event listeners...');
+
+            // Auth tabs
+            loginTab.addEventListener('click', function() {
+                console.log('🔑 Login tab clicked');
+                switchAuthTab('login');
+            });
+
+            registerTab.addEventListener('click', function() {
+                console.log('📝 Register tab clicked');
+                switchAuthTab('register');
+            });
+
+            // Login button
+            loginBtn.addEventListener('click', function() {
+                console.log('🔑 Login button clicked');
+                handleLogin();
+            });
+
+            // Register button
+            registerBtn.addEventListener('click', function() {
+                console.log('📝 Register button clicked');
+                handleRegister();
+            });
+
+            // Enter key support
+            loginPassword.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    console.log('⏎ Enter key pressed on login password');
+                    handleLogin();
+                }
+            });
+
+            registerPassword.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    console.log('⏎ Enter key pressed on register password');
+                    handleRegister();
+                }
+            });
+
+            // Logout
+            logoutBtn.addEventListener('click', function() {
+                console.log('🚪 Logout button clicked');
+                handleLogout();
+            });
+
+            // Order tabs
+            orderTab.addEventListener('click', function() {
+                console.log('📝 Order tab clicked');
+                switchOrderTab('order');
+            });
+
+            historyTab.addEventListener('click', function() {
+                console.log('📋 History tab clicked');
+                switchOrderTab('history');
+            });
+
+            // Order form
+            fishSize.addEventListener('change', updatePrice);
+            fryToggle.addEventListener('click', toggleFry);
+            submitBtn.addEventListener('click', function() {
+                console.log('🛒 Submit order button clicked');
+                submitOrder();
+            });
+
+            // ============================================================
+            // INIT
+            // ============================================================
+            updatePrice();
+            console.log('✅ Customer App ready!');
+            console.log('📱 API URL:', API_URL);
+
+            // Show login view initially
+            showAuthView();
+
+        })();
+    </script>
+
+</body>
+</html>
