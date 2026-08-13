@@ -106,6 +106,45 @@ app.get('/api/customer/:phoneNumber/orders', (req, res) => {
 });
 
 // ============================================================
+// ADMIN - RESET CUSTOMER PASSWORD
+// ============================================================
+
+app.post('/api/admin/reset-password', (req, res) => {
+    const db = readData();
+    const { phoneNumber, newPassword } = req.body;
+
+    if (!phoneNumber || !newPassword) {
+        return res.status(400).json({ error: 'Phone number and new password required' });
+    }
+
+    // Find the customer
+    const customer = db.customers.find(c => c.phoneNumber === phoneNumber);
+    if (!customer) {
+        return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    // Update password
+    customer.password = newPassword;
+    writeData(db);
+
+    res.json({
+        success: true,
+        message: `Password reset successfully for ${customer.name} (${customer.phoneNumber})`
+    });
+});
+
+// GET all customers (for admin to see list)
+app.get('/api/admin/customers', (req, res) => {
+    const db = readData();
+    // Remove passwords from response
+    const customers = db.customers.map(c => {
+        const { password, ...rest } = c;
+        return rest;
+    });
+    res.json(customers);
+});
+
+// ============================================================
 // API ROUTES - ORDERS
 // ============================================================
 
