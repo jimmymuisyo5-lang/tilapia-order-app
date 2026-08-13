@@ -1,7 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
-const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -10,110 +8,34 @@ app.use(cors());
 app.use(express.json());
 
 // Serve static files
+const path = require('path');
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================================
-// DATA FILE - WITH BETTER PATH HANDLING
+// IN-MEMORY DATA STORAGE (No file needed)
 // ============================================================
 
-// Try multiple possible locations for data file
-const possiblePaths = [
-    path.join(__dirname, 'data.json'),
-    path.join(__dirname, '..', 'data.json'),
-    path.join('/tmp', 'data.json'),
-];
+// This stores data in memory while the server is running
+// Note: Data will be lost if the server restarts, but it will work
+const memoryData = {
+    orders: [],
+    customers: []
+};
 
-let DATA_FILE = possiblePaths[0]; // default
-
-function findWritablePath() {
-    for (const p of possiblePaths) {
-        try {
-            // Try to write a test file
-            fs.writeFileSync(p, JSON.stringify({ test: true }));
-            fs.unlinkSync(p);
-            return p;
-        } catch (err) {
-            console.log(`❌ Cannot write to ${p}:`, err.message);
-        }
-    }
-    // Fallback to /tmp which is usually writable on Render
-    return '/tmp/data.json';
-}
-
-// Check if data.json exists in current directory, otherwise use /tmp
-function getDataFilePath() {
-    const localPath = path.join(__dirname, 'data.json');
-    if (fs.existsSync(localPath)) {
-        return localPath;
-    }
-    // Use /tmp as fallback
-    return '/tmp/data.json';
-}
-
-DATA_FILE = getDataFilePath();
-console.log(`📁 Using data file: ${DATA_FILE}`);
-
-function ensureDataFile() {
-    try {
-        if (!fs.existsSync(DATA_FILE)) {
-            console.log('⚠️ data.json not found, creating...');
-            fs.writeFileSync(DATA_FILE, JSON.stringify({ orders: [], customers: [] }, null, 2));
-            console.log('✅ data.json created at:', DATA_FILE);
-        } else {
-            console.log('✅ data.json found at:', DATA_FILE);
-        }
-    } catch (err) {
-        console.error('❌ Error with data.json:', err.message);
-        // Try /tmp as fallback
-        DATA_FILE = '/tmp/data.json';
-        try {
-            fs.writeFileSync(DATA_FILE, JSON.stringify({ orders: [], customers: [] }, null, 2));
-            console.log('✅ data.json created at /tmp');
-        } catch (err2) {
-            console.error('❌ Failed to create data.json:', err2.message);
-        }
-    }
-}
-
-ensureDataFile();
-
+// Read data from memory
 function readData() {
-    try {
-        if (!fs.existsSync(DATA_FILE)) {
-            console.log('⚠️ data.json missing, creating fresh');
-            const defaultData = { orders: [], customers: [] };
-            fs.writeFileSync(DATA_FILE, JSON.stringify(defaultData, null, 2));
-            return defaultData;
-        }
-        const data = fs.readFileSync(DATA_FILE, 'utf8');
-        const parsed = JSON.parse(data);
-        if (!parsed.orders) parsed.orders = [];
-        if (!parsed.customers) parsed.customers = [];
-        return parsed;
-    } catch (err) {
-        console.error('❌ Error reading data.json:', err.message);
-        // Return default data
-        return { orders: [], customers: [] };
-    }
+    return {
+        orders: memoryData.orders || [],
+        customers: memoryData.customers || []
+    };
 }
 
+// Write data to memory
 function writeData(data) {
-    try {
-        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-        console.log('✅ Data written successfully to:', DATA_FILE);
-    } catch (err) {
-        console.error('❌ Error writing data.json:', err.message);
-        // Try fallback to /tmp
-        if (DATA_FILE !== '/tmp/data.json') {
-            try {
-                DATA_FILE = '/tmp/data.json';
-                fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-                console.log('✅ Data written to /tmp successfully');
-            } catch (err2) {
-                console.error('❌ Failed to write data to /tmp:', err2.message);
-            }
-        }
-    }
+    memoryData.orders = data.orders || [];
+    memoryData.customers = data.customers || [];
+    console.log(`✅ Data updated: ${memoryData.customers.length} customers, ${memoryData.orders.length} orders`);
+    return true;
 }
 
 // ============================================================
@@ -121,7 +43,7 @@ function writeData(data) {
 // ============================================================
 
 app.post('/api/register', (req, res) => {
-    console.log('📝 Registration attempt:', req.body);
+    console.log('📝 Registration attempt:', req.body.phoneNumber);
     const db = readData();
     const { phoneNumber, password, name } = req.body;
 
@@ -143,7 +65,8 @@ app.post('/api/register', (req, res) => {
     db.customers.push(newCustomer);
     writeData(db);
 
-    console.log('✅ Customer registered:', newCustomer);
+    console.log(`✅ Customer registered: ${phoneNumber}`);
+    console.log(`   📋 Total customers: ${db.customers.length}`);
 
     const { password: _, ...customerWithoutPassword } = newCustomer;
     res.status(201).json({
@@ -158,12 +81,16 @@ app.post('/api/login', (req, res) => {
     const db = readData();
     const { phoneNumber, password } = req.body;
 
-    if (!db.customers || !Array.isArray(db.customers)) {
-        console.log('❌ No customers found in database');
-        return res.status(401).json({ error: 'No customers registered' });
+    console.log(`📋 Found ${db.customers ? db.customers.length : 0} customers in database`);
+
+    if (!db.customers || !Array.isArray(db.customers) || db.customers.length === 0) {
+        console.log('❌ No customers in database');
+        return res.status(401).json({ error: 'No customers registered. Please register first.' });
     }
 
-    console.log(`📋 Found ${db.customers.length} customers in database`);
+    // Log all registered phones for debugging
+    const phones = db.customers.map(c => c.phoneNumber);
+    console.log('   Registered phones:', phones.join(', '));
 
     const customer = db.customers.find(c => c.phoneNumber === phoneNumber);
     if (!customer) {
@@ -187,9 +114,36 @@ app.post('/api/login', (req, res) => {
 });
 
 // ============================================================
-// REST OF THE API ROUTES
+// ADMIN - RESET CUSTOMER PASSWORD
 // ============================================================
 
+app.post('/api/admin/reset-password', (req, res) => {
+    const db = readData();
+    const { phoneNumber, newPassword } = req.body;
+
+    if (!phoneNumber || !newPassword) {
+        return res.status(400).json({ error: 'Phone number and new password required' });
+    }
+
+    if (!db.customers || !Array.isArray(db.customers) || db.customers.length === 0) {
+        return res.status(404).json({ error: 'No customers found' });
+    }
+
+    const customer = db.customers.find(c => c.phoneNumber === phoneNumber);
+    if (!customer) {
+        return res.status(404).json({ error: 'Customer not found' });
+    }
+
+    customer.password = newPassword;
+    writeData(db);
+
+    res.json({
+        success: true,
+        message: `Password reset successfully for ${customer.name} (${customer.phoneNumber})`
+    });
+});
+
+// Get customer orders
 app.get('/api/customer/:phoneNumber/orders', (req, res) => {
     const db = readData();
     const phoneNumber = req.params.phoneNumber;
@@ -208,33 +162,7 @@ app.get('/api/customer/:phoneNumber/orders', (req, res) => {
     res.json(orders);
 });
 
-// Admin - Reset customer password
-app.post('/api/admin/reset-password', (req, res) => {
-    const db = readData();
-    const { phoneNumber, newPassword } = req.body;
-
-    if (!phoneNumber || !newPassword) {
-        return res.status(400).json({ error: 'Phone number and new password required' });
-    }
-
-    if (!db.customers || !Array.isArray(db.customers)) {
-        return res.status(404).json({ error: 'No customers found' });
-    }
-
-    const customer = db.customers.find(c => c.phoneNumber === phoneNumber);
-    if (!customer) {
-        return res.status(404).json({ error: 'Customer not found' });
-    }
-
-    customer.password = newPassword;
-    writeData(db);
-
-    res.json({
-        success: true,
-        message: `Password reset successfully for ${customer.name} (${customer.phoneNumber})`
-    });
-});
-
+// Admin - Get all customers
 app.get('/api/admin/customers', (req, res) => {
     const db = readData();
     if (!db.customers || !Array.isArray(db.customers)) {
@@ -247,7 +175,10 @@ app.get('/api/admin/customers', (req, res) => {
     res.json(customers);
 });
 
-// Orders
+// ============================================================
+// API ROUTES - ORDERS
+// ============================================================
+
 app.get('/api/orders', (req, res) => {
     const db = readData();
     if (!db.orders || !Array.isArray(db.orders)) {
@@ -305,5 +236,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`🐟 Tilapia Order Server running at http://localhost:${PORT}`);
     console.log(`📱 Customer App: http://localhost:${PORT}/customer.html`);
     console.log(`🔐 Admin App: http://localhost:${PORT}/admin.html`);
-    console.log(`📁 Data file location: ${DATA_FILE}`);
+    console.log(`💾 Data stored in memory (${memoryData.customers.length} customers, ${memoryData.orders.length} orders)`);
+    console.log(`⚠️ Note: Data will reset if server restarts`);
 });
