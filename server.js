@@ -21,12 +21,24 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let isConnected = false;
 
-// Test connection
+// Test connection with timeout
 async function testConnection() {
     try {
+        console.log('⏳ Testing Supabase connection...');
+        
+        // Set a 10-second timeout
+        const timeout = setTimeout(() => {
+            console.log('⚠️ Supabase connection timeout after 10s');
+            isConnected = false;
+        }, 10000);
+
         const { data, error } = await supabase.from('customers').select('count').limit(1);
+        
+        // Clear the timeout if connection succeeds
+        clearTimeout(timeout);
+
         if (error) {
-            console.log('⚠️ Supabase connection test:', error.message);
+            console.log('⚠️ Supabase connection test error:', error.message);
             isConnected = false;
             return false;
         }
