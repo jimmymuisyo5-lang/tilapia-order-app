@@ -15,8 +15,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ============================================================
 
 // ⚠️ REPLACE WITH YOUR ACTUAL SUPABASE CREDENTIALS
-const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
-const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://jimmylanguser.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImppbW15bGFuZ3VzZXIiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTczNDI0MjU4NSwiZXhwIjoyMDQ5ODE4NTg1fQ.YOUR_ACTUAL_KEY';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
