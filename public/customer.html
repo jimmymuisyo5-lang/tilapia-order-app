@@ -1084,4 +1084,73 @@
                 handleLogin();
             });
 
-            loginPassword
+            loginPassword.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    console.log('⏎ Enter key pressed on login password');
+                    handleLogin();
+                }
+            });
+
+            // Register
+            registerBtn.addEventListener('click', function() {
+                console.log('📝 Register button clicked');
+                handleRegister();
+            });
+
+            registerPassword.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    console.log('⏎ Enter key pressed on register password');
+                    handleRegister();
+                }
+            });
+
+            // Logout
+            logoutBtn.addEventListener('click', function() {
+                console.log('🚪 Logout button clicked');
+                handleLogout();
+            });
+
+            // Order tabs
+            orderTab.addEventListener('click', function() {
+                console.log('📝 Order tab clicked');
+                switchOrderTab('order');
+            });
+
+            historyTab.addEventListener('click', function() {
+                console.log('📋 History tab clicked');
+                switchOrderTab('history');
+            });
+
+            // Order form
+            fishSize.addEventListener('change', updatePrice);
+            fryToggle.addEventListener('click', toggleFry);
+            submitBtn.addEventListener('click', function() {
+                console.log('🛒 Submit order button clicked');
+                submitOrder();
+            });
+
+            // ============================================================
+            // INIT
+            // ============================================================
+
+            updatePrice();
+
+            // Try to restore session
+            const sessionRestored = restoreSession();
+
+            if (!sessionRestored) {
+                // No session, show login view
+                loadingView.style.display = 'none';
+                authView.style.display = 'block';
+                orderView.style.display = 'none';
+                console.log('👤 No session found, showing login');
+            }
+
+            console.log('✅ Customer App ready!');
+            console.log('📱 API URL:', API_URL);
+
+        })();
+    </script>
+
+</body>
+</html>
