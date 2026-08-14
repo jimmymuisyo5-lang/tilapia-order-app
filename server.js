@@ -11,148 +11,62 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================================
-// SUPABASE CONNECTION - YOUR CREDENTIALS
+// SUPABASE CONNECTION
 // ============================================================
 
-const SUPABASE_URL = 'https://sascbmavbhstzbhkrdlq.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhc2NibWF2YmhzdHpiaGtyZGxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODA4NDYsImV4cCI6MjEwMjI1Njg0Nn0.Q8_hFBwwsTJpyIrvNV25XB_Gg18xweXlpT__vzGZ9Ys';
+// ⚠️ REPLACE THESE WITH YOUR ACTUAL SUPABASE CREDENTIALS
+const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co'; // <-- PASTE YOUR URL
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY'; // <-- PASTE YOUR ANON KEY
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-let isConnected = false;
-
-// Test connection with timeout
-async function testConnection() {
-    try {
-        console.log('⏳ Testing Supabase connection...');
-        
-        // Set a 10-second timeout
-        const timeout = setTimeout(() => {
-            console.log('⚠️ Supabase connection timeout after 10s');
-            isConnected = false;
-        }, 10000);
-
-        const { data, error } = await supabase.from('customers').select('count').limit(1);
-        
-        // Clear the timeout if connection succeeds
-        clearTimeout(timeout);
-
-        if (error) {
-            console.log('⚠️ Supabase connection test error:', error.message);
-            isConnected = false;
-            return false;
-        }
-        isConnected = true;
-        console.log('✅ Supabase connected successfully!');
-        return true;
-    } catch (err) {
-        console.error('❌ Supabase connection error:', err.message);
-        isConnected = false;
-        return false;
-    }
-}
-
-// ============================================================
-// MIDDLEWARE
-// ============================================================
-
-function checkDb(req, res, next) {
-    if (!isConnected) {
-        return res.status(503).json({
-            error: 'Database not connected',
-            tip: 'Please try again in a moment.'
-        });
-    }
-    next();
-}
-
-app.use('/api/*', checkDb);
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ============================================================
 // API ROUTES
 // ============================================================
 
-// Health check
-app.get('/api/keep-alive', async (req, res) => {
-    if (!isConnected) {
-        return res.json({
-            status: 'disconnected',
-            connected: false,
-            error: 'Supabase not connected',
-            timestamp: new Date().toISOString()
-        });
-    }
-    try {
-        const { count: customers, error: custErr } = await supabase
-            .from('customers')
-            .select('*', { count: 'exact', head: true });
-
-        const { count: orders, error: ordErr } = await supabase
-            .from('orders')
-            .select('*', { count: 'exact', head: true });
-
-        res.json({
-            status: 'alive',
-            connected: true,
-            customers: customers || 0,
-            orders: orders || 0,
-            database: 'Supabase',
-            timestamp: new Date().toISOString()
-        });
-    } catch (err) {
-        res.json({
-            status: 'alive',
-            connected: false,
-            error: err.message,
-            timestamp: new Date().toISOString()
-        });
-    }
-});
-
-// Register
+// REGISTER
 app.post('/api/register', async (req, res) => {
     try {
         const { phoneNumber, password, name } = req.body;
 
-        // Check if customer exists
-        const { data: existing, error: findErr } = await supabase
+        // Check if user exists using phone_number column
+        const { data: existing, error: findError } = await supabase
             .from('customers')
-            .select('phone_number')
+            .select('*')
             .eq('phone_number', phoneNumber)
-            .single();
+            .maybeSingle();
 
         if (existing) {
             return res.status(400).json({ error: 'Phone number already registered' });
         }
 
-        // Insert new customer
-        const { data, error } = await supabase
+        // Insert new user
+        const { data: newCustomer, error: insertError } = await supabase
             .from('customers')
-            .insert([{
+            .insert([{ 
                 phone_number: phoneNumber,
-                password: password,
-                name: name || 'Customer'
+                password: password, 
+                name: name || 'Customer',
+                created_at: new Date().toISOString() 
             }])
-            .select();
+            .select()
+            .single();
 
-        if (error) throw error;
+        if (insertError) {
+            console.error('Insert error:', insertError);
+            return res.status(500).json({ error: 'Registration failed', details: insertError.message });
+        }
 
-        console.log(`✅ Registered: ${phoneNumber}`);
+        const { password: _, ...customerWithoutPassword } = newCustomer;
+        res.status(201).json({ success: true, message: 'Registration successful', customer: customerWithoutPassword });
 
-        const customer = data[0];
-        const { password: _, ...customerWithoutPassword } = customer;
-        res.status(201).json({
-            success: true,
-            message: 'Registration successful',
-            customer: customerWithoutPassword
-        });
     } catch (err) {
         console.error('Registration error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// Login
+// LOGIN
 app.post('/api/login', async (req, res) => {
     try {
         const { phoneNumber, password } = req.body;
@@ -161,7 +75,7 @@ app.post('/api/login', async (req, res) => {
             .from('customers')
             .select('*')
             .eq('phone_number', phoneNumber)
-            .single();
+            .maybeSingle();
 
         if (error || !customer) {
             return res.status(401).json({ error: 'Phone number not found' });
@@ -171,21 +85,55 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Incorrect password' });
         }
 
-        console.log(`✅ Login: ${phoneNumber}`);
+        const { password: _, ...customerWithoutPassword } = customer;
+        res.json({ success: true, message: 'Login successful', customer: customerWithoutPassword });
 
-        const { password: _, ...user } = customer;
-        res.json({
-            success: true,
-            message: 'Login successful',
-            customer: user
-        });
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// Get customer orders
+// PLACE ORDER
+app.post('/api/orders', async (req, res) => {
+    try {
+        const newOrder = req.body;
+        
+        // Ensure the order has an order_id
+        if (!newOrder.order_id) {
+            newOrder.order_id = 'TIL-' + Date.now();
+        }
+
+        const { data, error } = await supabase
+            .from('orders')
+            .insert([{
+                order_id: newOrder.order_id,
+                size: newOrder.size,
+                price: newOrder.price,
+                phone_number: newOrder.phone_number || newOrder.phoneNumber,
+                delivery_area: newOrder.delivery_area || newOrder.deliveryArea,
+                order_stage: newOrder.order_stage || newOrder.orderStage || 'Order Received',
+                fry_status: newOrder.fry_status || newOrder.fryStatus || 'Not Fried',
+                timestamp: newOrder.timestamp || new Date().toISOString(),
+                created_at: newOrder.created_at || new Date().toISOString()
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Insert order error:', error);
+            return res.status(500).json({ error: 'Failed to place order', details: error.message });
+        }
+
+        res.status(201).json(data);
+
+    } catch (err) {
+        console.error('Order error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// GET CUSTOMER ORDERS
 app.get('/api/customer/:phoneNumber/orders', async (req, res) => {
     try {
         const phoneNumber = req.params.phoneNumber;
@@ -196,64 +144,33 @@ app.get('/api/customer/:phoneNumber/orders', async (req, res) => {
             .eq('phone_number', phoneNumber)
             .order('timestamp', { ascending: false });
 
-        if (error) throw error;
-
-        res.json(orders || []);
-    } catch (err) {
-        console.error('Error:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Admin: Get all customers
-app.get('/api/admin/customers', async (req, res) => {
-    try {
-        const { data: customers, error } = await supabase
-            .from('customers')
-            .select('id, phone_number, name, created_at');
-
-        if (error) throw error;
-
-        res.json(customers || []);
-    } catch (err) {
-        console.error('Error:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
-// Admin: Reset password
-app.post('/api/admin/reset-password', async (req, res) => {
-    try {
-        const { phoneNumber, newPassword } = req.body;
-
-        const { data: customer, error: findErr } = await supabase
-            .from('customers')
-            .select('name')
-            .eq('phone_number', phoneNumber)
-            .single();
-
-        if (!customer) {
-            return res.status(404).json({ error: 'Customer not found' });
+        if (error) {
+            console.error('Fetch orders error:', error);
+            return res.status(500).json({ error: 'Failed to fetch orders' });
         }
 
-        const { error: updateErr } = await supabase
-            .from('customers')
-            .update({ password: newPassword })
-            .eq('phone_number', phoneNumber);
+        // Convert column names back to camelCase for the frontend
+        const formattedOrders = orders.map(o => ({
+            orderId: o.order_id,
+            size: o.size,
+            price: o.price,
+            phoneNumber: o.phone_number,
+            deliveryArea: o.delivery_area,
+            orderStage: o.order_stage,
+            fryStatus: o.fry_status,
+            timestamp: o.timestamp,
+            createdAt: o.created_at
+        }));
 
-        if (updateErr) throw updateErr;
+        res.json(formattedOrders || []);
 
-        res.json({
-            success: true,
-            message: `Password reset for ${customer.name}`
-        });
     } catch (err) {
-        console.error('Error:', err);
+        console.error('Fetch orders error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-// Orders
+// GET ALL ORDERS (ADMIN)
 app.get('/api/orders', async (req, res) => {
     try {
         const { data: orders, error } = await supabase
@@ -261,101 +178,159 @@ app.get('/api/orders', async (req, res) => {
             .select('*')
             .order('timestamp', { ascending: true });
 
-        if (error) throw error;
+        if (error) {
+            console.error('Fetch all orders error:', error);
+            return res.status(500).json({ error: 'Failed to fetch orders' });
+        }
 
-        res.json(orders || []);
+        // Convert column names back to camelCase for the frontend
+        const formattedOrders = orders.map(o => ({
+            orderId: o.order_id,
+            size: o.size,
+            price: o.price,
+            phoneNumber: o.phone_number,
+            deliveryArea: o.delivery_area,
+            orderStage: o.order_stage,
+            fryStatus: o.fry_status,
+            timestamp: o.timestamp,
+            createdAt: o.created_at
+        }));
+
+        res.json(formattedOrders || []);
+
     } catch (err) {
-        console.error('Error:', err);
+        console.error('Fetch orders error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-app.post('/api/orders', async (req, res) => {
-    try {
-        const newOrder = req.body;
-
-        const { data, error } = await supabase
-            .from('orders')
-            .insert([{
-                order_id: newOrder.orderId,
-                size: newOrder.size,
-                price: newOrder.price,
-                phone_number: newOrder.phoneNumber,
-                delivery_area: newOrder.deliveryArea,
-                order_stage: newOrder.orderStage || 'Order Received',
-                fry_status: newOrder.fryStatus || 'Not Fried',
-                timestamp: new Date().toISOString(),
-                created_at: newOrder.createdAt || new Date().toISOString()
-            }])
-            .select();
-
-        if (error) throw error;
-
-        res.status(201).json(data[0]);
-    } catch (err) {
-        console.error('Error creating order:', err);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
-
+// UPDATE ORDER (ADMIN)
 app.put('/api/orders/:orderId', async (req, res) => {
     try {
         const orderId = req.params.orderId;
         const updates = req.body;
 
-        // Build update object
-        const updateObj = {};
-        if (updates.orderStage) updateObj.order_stage = updates.orderStage;
-        if (updates.fryStatus) updateObj.fry_status = updates.fryStatus;
+        // Convert camelCase to snake_case for database
+        const dbUpdates = {};
+        if (updates.orderStage) dbUpdates.order_stage = updates.orderStage;
+        if (updates.fryStatus) dbUpdates.fry_status = updates.fryStatus;
 
         const { data, error } = await supabase
             .from('orders')
-            .update(updateObj)
+            .update(dbUpdates)
             .eq('order_id', orderId)
-            .select();
+            .select()
+            .single();
 
-        if (error) throw error;
-
-        if (data.length === 0) {
+        if (error) {
+            console.error('Update error:', error);
             return res.status(404).json({ error: 'Order not found' });
         }
 
-        res.json(data[0]);
+        // Convert back to camelCase
+        const formattedOrder = {
+            orderId: data.order_id,
+            size: data.size,
+            price: data.price,
+            phoneNumber: data.phone_number,
+            deliveryArea: data.delivery_area,
+            orderStage: data.order_stage,
+            fryStatus: data.fry_status,
+            timestamp: data.timestamp,
+            createdAt: data.created_at
+        };
+
+        res.json(formattedOrder);
+
     } catch (err) {
-        console.error('Error updating order:', err);
+        console.error('Update error:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
-app.delete('/api/orders/:orderId', async (req, res) => {
+// GET CUSTOMERS (ADMIN)
+app.get('/api/admin/customers', async (req, res) => {
     try {
-        const orderId = req.params.orderId;
+        const { data: customers, error } = await supabase
+            .from('customers')
+            .select('id, phone_number, name, created_at');
 
-        const { error } = await supabase
-            .from('orders')
-            .delete()
-            .eq('order_id', orderId);
+        if (error) {
+            console.error('Fetch customers error:', error);
+            return res.status(500).json({ error: 'Failed to fetch customers' });
+        }
 
-        if (error) throw error;
+        // Convert to camelCase for frontend
+        const formattedCustomers = customers.map(c => ({
+            id: c.id,
+            phoneNumber: c.phone_number,
+            name: c.name,
+            createdAt: c.created_at
+        }));
 
-        res.json({ message: 'Order deleted' });
+        res.json(formattedCustomers || []);
+
     } catch (err) {
-        console.error('Error deleting order:', err);
+        console.error('Fetch customers error:', err);
         res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// RESET PASSWORD (ADMIN)
+app.post('/api/admin/reset-password', async (req, res) => {
+    try {
+        const { phoneNumber, newPassword } = req.body;
+
+        const { data, error } = await supabase
+            .from('customers')
+            .update({ password: newPassword })
+            .eq('phone_number', phoneNumber)
+            .select()
+            .single();
+
+        if (error) {
+            return res.status(404).json({ error: 'Customer not found' });
+        }
+
+        res.json({ success: true, message: `Password reset for ${data.name}` });
+
+    } catch (err) {
+        console.error('Reset error:', err);
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// ============================================================
+// KEEP ALIVE
+// ============================================================
+app.get('/api/keep-alive', async (req, res) => {
+    try {
+        const { count: customerCount, error: cErr } = await supabase
+            .from('customers')
+            .select('*', { count: 'exact', head: true });
+
+        const { count: orderCount, error: oErr } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true });
+
+        res.json({
+            status: 'alive',
+            connected: true,
+            customers: customerCount || 0,
+            orders: orderCount || 0,
+            timestamp: new Date().toISOString()
+        });
+    } catch (err) {
+        res.json({ status: 'alive', connected: false, error: err.message });
     }
 });
 
 // ============================================================
 // START SERVER
 // ============================================================
-
-async function start() {
-    await testConnection();
-    app.listen(PORT, '0.0.0.0', () => {
-        console.log(`🐟 Server running on http://localhost:${PORT}`);
-        console.log(`📱 Customer: http://localhost:${PORT}/customer.html`);
-        console.log(`🔐 Admin: http://localhost:${PORT}/admin.html`);
-    });
-}
-
-start();
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🐟 Tilapia Order Server running at http://localhost:${PORT}`);
+    console.log(`📱 Customer App: http://localhost:${PORT}/customer.html`);
+    console.log(`🔐 Admin App: http://localhost:${PORT}/admin.html`);
+    console.log(`💾 Supabase connected and ready`);
+});
