@@ -14,9 +14,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // SUPABASE CONNECTION
 // ============================================================
 
-// ⚠️ REPLACE THESE WITH YOUR ACTUAL SUPABASE CREDENTIALS
-const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co'; // <-- PASTE YOUR URL
-const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY'; // <-- PASTE YOUR ANON KEY
+// ⚠️ REPLACE WITH YOUR ACTUAL SUPABASE CREDENTIALS
+const SUPABASE_URL = 'https://YOUR_PROJECT_ID.supabase.co';
+const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -27,27 +27,32 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 // REGISTER
 app.post('/api/register', async (req, res) => {
     try {
+        console.log('📝 Registration attempt:', req.body);
         const { phoneNumber, password, name } = req.body;
 
-        // Check if user exists using phone_number column
+        // Check if user already exists
         const { data: existing, error: findError } = await supabase
             .from('customers')
             .select('*')
             .eq('phone_number', phoneNumber)
             .maybeSingle();
 
+        if (findError) {
+            console.error('Find error:', findError);
+            return res.status(500).json({ error: 'Database error', details: findError.message });
+        }
+
         if (existing) {
             return res.status(400).json({ error: 'Phone number already registered' });
         }
 
-        // Insert new user
+        // Insert new user - using Supabase's built-in timestamp
         const { data: newCustomer, error: insertError } = await supabase
             .from('customers')
             .insert([{ 
                 phone_number: phoneNumber,
                 password: password, 
-                name: name || 'Customer',
-                created_at: new Date().toISOString() 
+                name: name || 'Customer'
             }])
             .select()
             .single();
@@ -57,18 +62,26 @@ app.post('/api/register', async (req, res) => {
             return res.status(500).json({ error: 'Registration failed', details: insertError.message });
         }
 
+        console.log('✅ Customer registered:', phoneNumber);
+
+        // Remove password before sending response
         const { password: _, ...customerWithoutPassword } = newCustomer;
-        res.status(201).json({ success: true, message: 'Registration successful', customer: customerWithoutPassword });
+        res.status(201).json({ 
+            success: true, 
+            message: 'Registration successful', 
+            customer: customerWithoutPassword 
+        });
 
     } catch (err) {
         console.error('Registration error:', err);
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'Server error', details: err.message });
     }
 });
 
 // LOGIN
 app.post('/api/login', async (req, res) => {
     try {
+        console.log('🔑 Login attempt:', req.body.phoneNumber);
         const { phoneNumber, password } = req.body;
 
         const { data: customer, error } = await supabase
@@ -77,7 +90,12 @@ app.post('/api/login', async (req, res) => {
             .eq('phone_number', phoneNumber)
             .maybeSingle();
 
-        if (error || !customer) {
+        if (error) {
+            console.error('Login error:', error);
+            return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (!customer) {
             return res.status(401).json({ error: 'Phone number not found' });
         }
 
@@ -85,8 +103,14 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Incorrect password' });
         }
 
+        console.log('✅ Login successful:', phoneNumber);
+
         const { password: _, ...customerWithoutPassword } = customer;
-        res.json({ success: true, message: 'Login successful', customer: customerWithoutPassword });
+        res.json({ 
+            success: true, 
+            message: 'Login successful', 
+            customer: customerWithoutPassword 
+        });
 
     } catch (err) {
         console.error('Login error:', err);
@@ -94,12 +118,17 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// ============================================================
+// ORDERS
+// ============================================================
+
 // PLACE ORDER
 app.post('/api/orders', async (req, res) => {
     try {
+        console.log('📦 New order:', req.body);
         const newOrder = req.body;
         
-        // Ensure the order has an order_id
+        // Generate order_id if not provided
         if (!newOrder.order_id) {
             newOrder.order_id = 'TIL-' + Date.now();
         }
@@ -113,9 +142,7 @@ app.post('/api/orders', async (req, res) => {
                 phone_number: newOrder.phone_number || newOrder.phoneNumber,
                 delivery_area: newOrder.delivery_area || newOrder.deliveryArea,
                 order_stage: newOrder.order_stage || newOrder.orderStage || 'Order Received',
-                fry_status: newOrder.fry_status || newOrder.fryStatus || 'Not Fried',
-                timestamp: newOrder.timestamp || new Date().toISOString(),
-                created_at: newOrder.created_at || new Date().toISOString()
+                fry_status: newOrder.fry_status || newOrder.fryStatus || 'Not Fried'
             }])
             .select()
             .single();
@@ -125,6 +152,7 @@ app.post('/api/orders', async (req, res) => {
             return res.status(500).json({ error: 'Failed to place order', details: error.message });
         }
 
+        console.log('✅ Order placed:', data.order_id);
         res.status(201).json(data);
 
     } catch (err) {
@@ -142,14 +170,13 @@ app.get('/api/customer/:phoneNumber/orders', async (req, res) => {
             .from('orders')
             .select('*')
             .eq('phone_number', phoneNumber)
-            .order('timestamp', { ascending: false });
+            .order('created_at', { ascending: false });
 
         if (error) {
             console.error('Fetch orders error:', error);
             return res.status(500).json({ error: 'Failed to fetch orders' });
         }
 
-        // Convert column names back to camelCase for the frontend
         const formattedOrders = orders.map(o => ({
             orderId: o.order_id,
             size: o.size,
@@ -158,7 +185,6 @@ app.get('/api/customer/:phoneNumber/orders', async (req, res) => {
             deliveryArea: o.delivery_area,
             orderStage: o.order_stage,
             fryStatus: o.fry_status,
-            timestamp: o.timestamp,
             createdAt: o.created_at
         }));
 
@@ -176,14 +202,13 @@ app.get('/api/orders', async (req, res) => {
         const { data: orders, error } = await supabase
             .from('orders')
             .select('*')
-            .order('timestamp', { ascending: true });
+            .order('created_at', { ascending: true });
 
         if (error) {
             console.error('Fetch all orders error:', error);
             return res.status(500).json({ error: 'Failed to fetch orders' });
         }
 
-        // Convert column names back to camelCase for the frontend
         const formattedOrders = orders.map(o => ({
             orderId: o.order_id,
             size: o.size,
@@ -192,7 +217,6 @@ app.get('/api/orders', async (req, res) => {
             deliveryArea: o.delivery_area,
             orderStage: o.order_stage,
             fryStatus: o.fry_status,
-            timestamp: o.timestamp,
             createdAt: o.created_at
         }));
 
@@ -210,7 +234,6 @@ app.put('/api/orders/:orderId', async (req, res) => {
         const orderId = req.params.orderId;
         const updates = req.body;
 
-        // Convert camelCase to snake_case for database
         const dbUpdates = {};
         if (updates.orderStage) dbUpdates.order_stage = updates.orderStage;
         if (updates.fryStatus) dbUpdates.fry_status = updates.fryStatus;
@@ -227,7 +250,6 @@ app.put('/api/orders/:orderId', async (req, res) => {
             return res.status(404).json({ error: 'Order not found' });
         }
 
-        // Convert back to camelCase
         const formattedOrder = {
             orderId: data.order_id,
             size: data.size,
@@ -236,7 +258,6 @@ app.put('/api/orders/:orderId', async (req, res) => {
             deliveryArea: data.delivery_area,
             orderStage: data.order_stage,
             fryStatus: data.fry_status,
-            timestamp: data.timestamp,
             createdAt: data.created_at
         };
 
@@ -247,6 +268,10 @@ app.put('/api/orders/:orderId', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+// ============================================================
+// ADMIN - CUSTOMERS
+// ============================================================
 
 // GET CUSTOMERS (ADMIN)
 app.get('/api/admin/customers', async (req, res) => {
@@ -260,7 +285,6 @@ app.get('/api/admin/customers', async (req, res) => {
             return res.status(500).json({ error: 'Failed to fetch customers' });
         }
 
-        // Convert to camelCase for frontend
         const formattedCustomers = customers.map(c => ({
             id: c.id,
             phoneNumber: c.phone_number,
