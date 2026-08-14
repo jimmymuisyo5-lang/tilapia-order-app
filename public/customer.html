@@ -392,6 +392,24 @@
             font-size: 48px;
             margin-bottom: 10px;
         }
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1e3c2c;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .loading-container {
+            text-align: center;
+            padding: 40px 0;
+        }
     </style>
 </head>
 <body>
@@ -402,14 +420,22 @@
             <span>Customer</span>
         </div>
 
-        <div class="status-banner">
+        <div class="status-banner" id="statusBanner">
             <span class="live-badge">● ONLINE</span> Connected to server
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- LOADING VIEW -->
+        <!-- ============================================================ -->
+        <div id="loading-view" class="loading-container">
+            <div class="spinner"></div>
+            <p style="color: #7a6f67; margin-top: 10px;">Loading your session...</p>
         </div>
 
         <!-- ============================================================ -->
         <!-- LOGIN / REGISTER VIEW -->
         <!-- ============================================================ -->
-        <div id="auth-view">
+        <div id="auth-view" style="display:none;">
             <div class="tab-switch">
                 <button class="active" id="loginTab">Login</button>
                 <button id="registerTab">Register</button>
@@ -558,6 +584,7 @@
             const PRICES = { 5: 450, 6: 500, 7: 550, 8: 600, 9: 650, 10: 700 };
 
             // ===== DOM REFS =====
+            const loadingView = document.getElementById('loading-view');
             const authView = document.getElementById('auth-view');
             const orderView = document.getElementById('order-view');
             const customerName = document.getElementById('customerName');
@@ -597,7 +624,49 @@
             // ===== STATE =====
             let currentCustomer = null;
 
-            // ===== HELPERS =====
+            // ============================================================
+            // SESSION MANAGEMENT (localStorage)
+            // ============================================================
+
+            // Save customer session to localStorage
+            function saveSession(customer) {
+                try {
+                    localStorage.setItem('tilapia_customer_session', JSON.stringify(customer));
+                    console.log('💾 Session saved:', customer.phoneNumber);
+                } catch (err) {
+                    console.error('Error saving session:', err);
+                }
+            }
+
+            // Load customer session from localStorage
+            function loadSession() {
+                try {
+                    const data = localStorage.getItem('tilapia_customer_session');
+                    if (data) {
+                        const customer = JSON.parse(data);
+                        console.log('📂 Session loaded:', customer.phoneNumber);
+                        return customer;
+                    }
+                } catch (err) {
+                    console.error('Error loading session:', err);
+                }
+                return null;
+            }
+
+            // Clear session (logout)
+            function clearSession() {
+                try {
+                    localStorage.removeItem('tilapia_customer_session');
+                    console.log('🗑️ Session cleared');
+                } catch (err) {
+                    console.error('Error clearing session:', err);
+                }
+            }
+
+            // ============================================================
+            // HELPERS
+            // ============================================================
+
             function generateOrderId() {
                 const now = new Date();
                 const d = now.getFullYear().toString().slice(-2);
@@ -608,8 +677,13 @@
             }
 
             function formatTimestamp(iso) {
-                const d = new Date(iso);
-                return d.toLocaleString('en-KE', { hour12: true });
+                if (!iso) return 'N/A';
+                try {
+                    const d = new Date(iso);
+                    return d.toLocaleString('en-KE', { hour12: true });
+                } catch {
+                    return iso;
+                }
             }
 
             function getStageBadgeClass(stage) {
@@ -629,6 +703,7 @@
             // ============================================================
             // API CALLS
             // ============================================================
+
             async function registerCustomer(name, phone, password) {
                 try {
                     const res = await fetch(`${API_URL}/register`, {
@@ -684,9 +759,11 @@
             // ============================================================
             // AUTH FUNCTIONS
             // ============================================================
+
             function showAuthView() {
                 authView.style.display = 'block';
                 orderView.style.display = 'none';
+                loadingView.style.display = 'none';
                 currentCustomer = null;
             }
 
@@ -695,14 +772,17 @@
                 customerName.textContent = customer.name || 'Customer';
                 authView.style.display = 'none';
                 orderView.style.display = 'block';
+                loadingView.style.display = 'none';
+                // Save session to localStorage
+                saveSession(customer);
                 loadOrderHistory();
-                // Switch to place order tab
                 switchOrderTab('order');
             }
 
             // ============================================================
             // LOGIN
             // ============================================================
+
             async function handleLogin() {
                 const phone = loginPhone.value.trim();
                 const password = loginPassword.value.trim();
@@ -735,6 +815,7 @@
             // ============================================================
             // REGISTER
             // ============================================================
+
             async function handleRegister() {
                 console.log('📝 Register button clicked!');
 
@@ -742,7 +823,6 @@
                 const phone = registerPhone.value.trim();
                 const password = registerPassword.value.trim();
 
-                // Validation
                 if (!name) {
                     registerFeedback.textContent = '⚠️ Please enter your name.';
                     registerFeedback.style.color = '#c0392b';
@@ -771,7 +851,6 @@
                 } else {
                     registerFeedback.textContent = '✅ ' + result.message + ' Please login.';
                     registerFeedback.style.color = '#27ae60';
-                    // Switch to login tab and fill phone number
                     switchAuthTab('login');
                     loginPhone.value = phone;
                     loginPassword.value = '';
@@ -783,12 +862,13 @@
             // ============================================================
             // LOGOUT
             // ============================================================
+
             function handleLogout() {
+                clearSession();
                 showAuthView();
                 loginPassword.value = '';
                 loginFeedback.textContent = '';
                 registerFeedback.textContent = '';
-                // Reset forms
                 registerName.value = '';
                 registerPhone.value = '';
                 registerPassword.value = '';
@@ -797,6 +877,7 @@
             // ============================================================
             // AUTH TAB SWITCHING
             // ============================================================
+
             function switchAuthTab(tab) {
                 if (tab === 'login') {
                     loginTab.classList.add('active');
@@ -818,6 +899,7 @@
             // ============================================================
             // ORDER TAB SWITCHING
             // ============================================================
+
             function switchOrderTab(tab) {
                 if (tab === 'order') {
                     orderTab.classList.add('active');
@@ -836,53 +918,67 @@
             // ============================================================
             // ORDER HISTORY
             // ============================================================
+
             async function loadOrderHistory() {
                 if (!currentCustomer) return;
 
-                const orders = await fetchCustomerOrders(currentCustomer.phoneNumber);
+                try {
+                    const orders = await fetchCustomerOrders(currentCustomer.phoneNumber);
 
-                if (orders.length === 0) {
+                    if (!orders || orders.length === 0) {
+                        orderHistoryList.innerHTML = `
+                            <div class="history-empty">
+                                <div class="big-icon">📭</div>
+                                <h3>No orders yet</h3>
+                                <p class="text-muted">Place your first order today!</p>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    let html = '';
+                    // Sort by newest first
+                    orders.sort((a, b) => new Date(b.createdAt || b.timestamp) - new Date(a.createdAt || a.timestamp));
+
+                    orders.forEach((o) => {
+                        html += `
+                            <div class="order-card">
+                                <div class="flex-between">
+                                    <span class="order-id">#${o.orderId || o.order_id}</span>
+                                    <span style="font-size:13px; color:#7a6f67;">${formatTimestamp(o.createdAt || o.created_at)}</span>
+                                </div>
+                                <div class="meta">
+                                    <span>📏 Size: <strong>${o.size}</strong></span>
+                                    <span>💰 Price: <strong>KES ${o.price}</strong></span>
+                                </div>
+                                <div class="meta">
+                                    <span>📍 <strong>${o.deliveryArea || o.delivery_area || 'N/A'}</strong></span>
+                                </div>
+                                <div class="meta" style="margin-top:10px;">
+                                    <span class="badge ${getStageBadgeClass(o.orderStage || o.order_stage)}">${o.orderStage || o.order_stage || 'Order Received'}</span>
+                                    <span class="badge ${getFryBadgeClass(o.fryStatus || o.fry_status)}">${o.fryStatus || o.fry_status || 'Not Fried'}</span>
+                                </div>
+                            </div>
+                        `;
+                    });
+
+                    orderHistoryList.innerHTML = html;
+                } catch (err) {
+                    console.error('Error loading order history:', err);
                     orderHistoryList.innerHTML = `
                         <div class="history-empty">
-                            <div class="big-icon">📭</div>
-                            <h3>No orders yet</h3>
-                            <p class="text-muted">Place your first order today!</p>
+                            <div class="big-icon">⚠️</div>
+                            <h3>Error loading orders</h3>
+                            <p class="text-muted">Please try again later.</p>
                         </div>
                     `;
-                    return;
                 }
-
-                let html = '';
-                orders.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-                orders.forEach((o) => {
-                    html += `
-                        <div class="order-card">
-                            <div class="flex-between">
-                                <span class="order-id">#${o.orderId}</span>
-                                <span style="font-size:13px; color:#7a6f67;">${o.createdAt || formatTimestamp(o.timestamp)}</span>
-                            </div>
-                            <div class="meta">
-                                <span>📏 Size: <strong>${o.size}</strong></span>
-                                <span>💰 Price: <strong>KES ${o.price}</strong></span>
-                            </div>
-                            <div class="meta">
-                                <span>📍 <strong>${o.deliveryArea || 'N/A'}</strong></span>
-                            </div>
-                            <div class="meta" style="margin-top:10px;">
-                                <span class="badge ${getStageBadgeClass(o.orderStage)}">${o.orderStage}</span>
-                                <span class="badge ${getFryBadgeClass(o.fryStatus)}">${o.fryStatus}</span>
-                            </div>
-                        </div>
-                    `;
-                });
-
-                orderHistoryList.innerHTML = html;
             }
 
             // ============================================================
             // PLACE ORDER
             // ============================================================
+
             function toggleFry() {
                 const isFried = fryToggle.classList.toggle('active');
                 fryLabel.textContent = isFried ? 'Fried' : 'Not Fried';
@@ -918,15 +1014,15 @@
                 const now = new Date().toISOString();
 
                 const order = {
-                    orderId: orderId,
+                    order_id: orderId,
                     size: size,
                     price: price,
-                    phoneNumber: currentCustomer.phoneNumber,
-                    deliveryArea: area,
-                    orderStage: 'Order Received',
-                    fryStatus: fryStatus,
+                    phone_number: currentCustomer.phoneNumber,
+                    delivery_area: area,
+                    order_stage: 'Order Received',
+                    fry_status: fryStatus,
                     timestamp: now,
-                    createdAt: formatTimestamp(now),
+                    created_at: now
                 };
 
                 try {
@@ -941,10 +1037,28 @@
 
                     // Refresh order history
                     loadOrderHistory();
+
+                    // Switch to history tab to show the new order
+                    switchOrderTab('history');
+
                 } catch (err) {
                     submitFeedback.textContent = '❌ Failed to submit order. Please try again.';
                     submitFeedback.style.color = '#c0392b';
                 }
+            }
+
+            // ============================================================
+            // AUTO-LOGIN ON PAGE LOAD (Session Persistence)
+            // ============================================================
+
+            function restoreSession() {
+                const savedCustomer = loadSession();
+                if (savedCustomer && savedCustomer.phoneNumber) {
+                    console.log('🔄 Restoring session for:', savedCustomer.phoneNumber);
+                    showOrderView(savedCustomer);
+                    return true;
+                }
+                return false;
             }
 
             // ============================================================
@@ -964,70 +1078,10 @@
                 switchAuthTab('register');
             });
 
-            // Login button
+            // Login
             loginBtn.addEventListener('click', function() {
                 console.log('🔑 Login button clicked');
                 handleLogin();
             });
 
-            // Register button
-            registerBtn.addEventListener('click', function() {
-                console.log('📝 Register button clicked');
-                handleRegister();
-            });
-
-            // Enter key support
-            loginPassword.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    console.log('⏎ Enter key pressed on login password');
-                    handleLogin();
-                }
-            });
-
-            registerPassword.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    console.log('⏎ Enter key pressed on register password');
-                    handleRegister();
-                }
-            });
-
-            // Logout
-            logoutBtn.addEventListener('click', function() {
-                console.log('🚪 Logout button clicked');
-                handleLogout();
-            });
-
-            // Order tabs
-            orderTab.addEventListener('click', function() {
-                console.log('📝 Order tab clicked');
-                switchOrderTab('order');
-            });
-
-            historyTab.addEventListener('click', function() {
-                console.log('📋 History tab clicked');
-                switchOrderTab('history');
-            });
-
-            // Order form
-            fishSize.addEventListener('change', updatePrice);
-            fryToggle.addEventListener('click', toggleFry);
-            submitBtn.addEventListener('click', function() {
-                console.log('🛒 Submit order button clicked');
-                submitOrder();
-            });
-
-            // ============================================================
-            // INIT
-            // ============================================================
-            updatePrice();
-            console.log('✅ Customer App ready!');
-            console.log('📱 API URL:', API_URL);
-
-            // Show login view initially
-            showAuthView();
-
-        })();
-    </script>
-
-</body>
-</html>
+            loginPassword
