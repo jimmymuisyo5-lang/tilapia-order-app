@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient } = require('mongodb');
+const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
 const app = express();
@@ -11,33 +11,50 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ============================================================
-// MONGODB CONNECTION
+// SUPABASE CONNECTION - YOUR CREDENTIALS
 // ============================================================
 
-// ⚠️ REPLACE WITH YOUR ACTUAL CONNECTION STRING
-const MONGODB_URI = 'mongodb+srv://Jimmylanguser1:Jimmy54321@tilapia-order-app.5001h25.mongodb.net/?appName=Tilapia-order-app';
-const DB_NAME = 'tilapia_order_app';
+const SUPABASE_URL = 'https://sascbmavbhstzbhkrdlq.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhc2NibWF2YmhzdHpiaGtyZGxxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2ODA4NDYsImV4cCI6MjEwMjI1Njg0Nn0.Q8_hFBwwsTJpyIrvNV25XB_Gg18xweXlpT__vzGZ9Ys';
 
-let db = null;
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 let isConnected = false;
 
-// Connect to MongoDB
-async function connectDB() {
+// Test connection
+async function testConnection() {
     try {
-        console.log('⏳ Connecting to MongoDB...');
-        const client = new MongoClient(MONGODB_URI);
-        await client.connect();
-        db = client.db(DB_NAME);
+        const { data, error } = await supabase.from('customers').select('count').limit(1);
+        if (error) {
+            console.log('⚠️ Supabase connection test:', error.message);
+            isConnected = false;
+            return false;
+        }
         isConnected = true;
-        console.log('✅ MongoDB connected successfully!');
-        console.log(`📁 Database: ${DB_NAME}`);
+        console.log('✅ Supabase connected successfully!');
         return true;
     } catch (err) {
-        console.error('❌ MongoDB connection error:', err.message);
+        console.error('❌ Supabase connection error:', err.message);
         isConnected = false;
         return false;
     }
 }
+
+// ============================================================
+// MIDDLEWARE
+// ============================================================
+
+function checkDb(req, res, next) {
+    if (!isConnected) {
+        return res.status(503).json({
+            error: 'Database not connected',
+            tip: 'Please try again in a moment.'
+        });
+    }
+    next();
+}
+
+app.use('/api/*', checkDb);
 
 // ============================================================
 // API ROUTES
@@ -45,23 +62,29 @@ async function connectDB() {
 
 // Health check
 app.get('/api/keep-alive', async (req, res) => {
-    if (!isConnected || !db) {
+    if (!isConnected) {
         return res.json({
             status: 'disconnected',
             connected: false,
-            error: 'MongoDB not connected',
+            error: 'Supabase not connected',
             timestamp: new Date().toISOString()
         });
     }
     try {
-        const customers = await db.collection('customers').countDocuments();
-        const orders = await db.collection('orders').countDocuments();
+        const { count: customers, error: custErr } = await supabase
+            .from('customers')
+            .select('*', { count: 'exact', head: true });
+
+        const { count: orders, error: ordErr } = await supabase
+            .from('orders')
+            .select('*', { count: 'exact', head: true });
+
         res.json({
             status: 'alive',
             connected: true,
-            customers: customers,
-            orders: orders,
-            database: DB_NAME,
+            customers: customers || 0,
+            orders: orders || 0,
+            database: 'Supabase',
             timestamp: new Date().toISOString()
         });
     } catch (err) {
@@ -78,24 +101,39 @@ app.get('/api/keep-alive', async (req, res) => {
 app.post('/api/register', async (req, res) => {
     try {
         const { phoneNumber, password, name } = req.body;
-        if (!db) return res.status(503).json({ error: 'Database not connected' });
 
-        const existing = await db.collection('customers').findOne({ phoneNumber });
-        if (existing) return res.status(400).json({ error: 'Phone number already registered' });
+        // Check if customer exists
+        const { data: existing, error: findErr } = await supabase
+            .from('customers')
+            .select('phone_number')
+            .eq('phone_number', phoneNumber)
+            .single();
 
-        const newCustomer = {
-            id: Date.now().toString(),
-            phoneNumber,
-            password,
-            name: name || 'Customer',
-            createdAt: new Date().toISOString()
-        };
+        if (existing) {
+            return res.status(400).json({ error: 'Phone number already registered' });
+        }
 
-        await db.collection('customers').insertOne(newCustomer);
+        // Insert new customer
+        const { data, error } = await supabase
+            .from('customers')
+            .insert([{
+                phone_number: phoneNumber,
+                password: password,
+                name: name || 'Customer'
+            }])
+            .select();
+
+        if (error) throw error;
+
         console.log(`✅ Registered: ${phoneNumber}`);
 
-        const { password: _, ...customer } = newCustomer;
-        res.status(201).json({ success: true, message: 'Registration successful', customer });
+        const customer = data[0];
+        const { password: _, ...customerWithoutPassword } = customer;
+        res.status(201).json({
+            success: true,
+            message: 'Registration successful',
+            customer: customerWithoutPassword
+        });
     } catch (err) {
         console.error('Registration error:', err);
         res.status(500).json({ error: 'Server error' });
@@ -106,15 +144,29 @@ app.post('/api/register', async (req, res) => {
 app.post('/api/login', async (req, res) => {
     try {
         const { phoneNumber, password } = req.body;
-        if (!db) return res.status(503).json({ error: 'Database not connected' });
 
-        const customer = await db.collection('customers').findOne({ phoneNumber });
-        if (!customer) return res.status(401).json({ error: 'Phone number not found' });
-        if (customer.password !== password) return res.status(401).json({ error: 'Incorrect password' });
+        const { data: customer, error } = await supabase
+            .from('customers')
+            .select('*')
+            .eq('phone_number', phoneNumber)
+            .single();
+
+        if (error || !customer) {
+            return res.status(401).json({ error: 'Phone number not found' });
+        }
+
+        if (customer.password !== password) {
+            return res.status(401).json({ error: 'Incorrect password' });
+        }
 
         console.log(`✅ Login: ${phoneNumber}`);
+
         const { password: _, ...user } = customer;
-        res.json({ success: true, message: 'Login successful', customer: user });
+        res.json({
+            success: true,
+            message: 'Login successful',
+            customer: user
+        });
     } catch (err) {
         console.error('Login error:', err);
         res.status(500).json({ error: 'Server error' });
@@ -125,13 +177,16 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/customer/:phoneNumber/orders', async (req, res) => {
     try {
         const phoneNumber = req.params.phoneNumber;
-        if (!db) return res.status(503).json({ error: 'Database not connected' });
 
-        const orders = await db.collection('orders')
-            .find({ phoneNumber })
-            .sort({ timestamp: -1 })
-            .toArray();
-        res.json(orders);
+        const { data: orders, error } = await supabase
+            .from('orders')
+            .select('*')
+            .eq('phone_number', phoneNumber)
+            .order('timestamp', { ascending: false });
+
+        if (error) throw error;
+
+        res.json(orders || []);
     } catch (err) {
         console.error('Error:', err);
         res.status(500).json({ error: 'Server error' });
@@ -141,12 +196,13 @@ app.get('/api/customer/:phoneNumber/orders', async (req, res) => {
 // Admin: Get all customers
 app.get('/api/admin/customers', async (req, res) => {
     try {
-        if (!db) return res.status(503).json({ error: 'Database not connected' });
-        const customers = await db.collection('customers')
-            .find({})
-            .project({ password: 0 })
-            .toArray();
-        res.json(customers);
+        const { data: customers, error } = await supabase
+            .from('customers')
+            .select('id, phone_number, name, created_at');
+
+        if (error) throw error;
+
+        res.json(customers || []);
     } catch (err) {
         console.error('Error:', err);
         res.status(500).json({ error: 'Server error' });
@@ -157,17 +213,28 @@ app.get('/api/admin/customers', async (req, res) => {
 app.post('/api/admin/reset-password', async (req, res) => {
     try {
         const { phoneNumber, newPassword } = req.body;
-        if (!db) return res.status(503).json({ error: 'Database not connected' });
 
-        const customer = await db.collection('customers').findOne({ phoneNumber });
-        if (!customer) return res.status(404).json({ error: 'Customer not found' });
+        const { data: customer, error: findErr } = await supabase
+            .from('customers')
+            .select('name')
+            .eq('phone_number', phoneNumber)
+            .single();
 
-        await db.collection('customers').updateOne(
-            { phoneNumber },
-            { $set: { password: newPassword } }
-        );
+        if (!customer) {
+            return res.status(404).json({ error: 'Customer not found' });
+        }
 
-        res.json({ success: true, message: `Password reset for ${customer.name}` });
+        const { error: updateErr } = await supabase
+            .from('customers')
+            .update({ password: newPassword })
+            .eq('phone_number', phoneNumber);
+
+        if (updateErr) throw updateErr;
+
+        res.json({
+            success: true,
+            message: `Password reset for ${customer.name}`
+        });
     } catch (err) {
         console.error('Error:', err);
         res.status(500).json({ error: 'Server error' });
@@ -177,9 +244,14 @@ app.post('/api/admin/reset-password', async (req, res) => {
 // Orders
 app.get('/api/orders', async (req, res) => {
     try {
-        if (!db) return res.status(503).json({ error: 'Database not connected' });
-        const orders = await db.collection('orders').find({}).sort({ timestamp: 1 }).toArray();
-        res.json(orders);
+        const { data: orders, error } = await supabase
+            .from('orders')
+            .select('*')
+            .order('timestamp', { ascending: true });
+
+        if (error) throw error;
+
+        res.json(orders || []);
     } catch (err) {
         console.error('Error:', err);
         res.status(500).json({ error: 'Server error' });
@@ -188,48 +260,75 @@ app.get('/api/orders', async (req, res) => {
 
 app.post('/api/orders', async (req, res) => {
     try {
-        if (!db) return res.status(503).json({ error: 'Database not connected' });
         const newOrder = req.body;
-        await db.collection('orders').insertOne(newOrder);
-        res.status(201).json(newOrder);
+
+        const { data, error } = await supabase
+            .from('orders')
+            .insert([{
+                order_id: newOrder.orderId,
+                size: newOrder.size,
+                price: newOrder.price,
+                phone_number: newOrder.phoneNumber,
+                delivery_area: newOrder.deliveryArea,
+                order_stage: newOrder.orderStage || 'Order Received',
+                fry_status: newOrder.fryStatus || 'Not Fried',
+                timestamp: new Date().toISOString(),
+                created_at: newOrder.createdAt || new Date().toISOString()
+            }])
+            .select();
+
+        if (error) throw error;
+
+        res.status(201).json(data[0]);
     } catch (err) {
-        console.error('Error:', err);
+        console.error('Error creating order:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
 app.put('/api/orders/:orderId', async (req, res) => {
     try {
-        if (!db) return res.status(503).json({ error: 'Database not connected' });
         const orderId = req.params.orderId;
         const updates = req.body;
 
-        const result = await db.collection('orders').updateOne(
-            { orderId },
-            { $set: updates }
-        );
+        // Build update object
+        const updateObj = {};
+        if (updates.orderStage) updateObj.order_stage = updates.orderStage;
+        if (updates.fryStatus) updateObj.fry_status = updates.fryStatus;
 
-        if (result.matchedCount === 0) return res.status(404).json({ error: 'Order not found' });
+        const { data, error } = await supabase
+            .from('orders')
+            .update(updateObj)
+            .eq('order_id', orderId)
+            .select();
 
-        const updated = await db.collection('orders').findOne({ orderId });
-        res.json(updated);
+        if (error) throw error;
+
+        if (data.length === 0) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
+        res.json(data[0]);
     } catch (err) {
-        console.error('Error:', err);
+        console.error('Error updating order:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
 
 app.delete('/api/orders/:orderId', async (req, res) => {
     try {
-        if (!db) return res.status(503).json({ error: 'Database not connected' });
         const orderId = req.params.orderId;
 
-        const result = await db.collection('orders').deleteOne({ orderId });
-        if (result.deletedCount === 0) return res.status(404).json({ error: 'Order not found' });
+        const { error } = await supabase
+            .from('orders')
+            .delete()
+            .eq('order_id', orderId);
+
+        if (error) throw error;
 
         res.json({ message: 'Order deleted' });
     } catch (err) {
-        console.error('Error:', err);
+        console.error('Error deleting order:', err);
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -239,7 +338,7 @@ app.delete('/api/orders/:orderId', async (req, res) => {
 // ============================================================
 
 async function start() {
-    await connectDB();
+    await testConnection();
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`🐟 Server running on http://localhost:${PORT}`);
         console.log(`📱 Customer: http://localhost:${PORT}/customer.html`);
