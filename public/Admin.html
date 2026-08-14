@@ -284,7 +284,6 @@
             text-align: center;
             margin-bottom: 16px;
         }
-        /* Password Reset Section */
         .reset-section {
             background: #fef9e7;
             border: 2px solid #f1c40f;
@@ -314,7 +313,6 @@
             font-weight: 600;
             font-size: 14px;
         }
-        /* Admin Tabs */
         .admin-tabs {
             display: flex;
             gap: 8px;
@@ -340,6 +338,28 @@
         .admin-tab-content.active {
             display: block;
         }
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #1e3c2c;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        .loading-container {
+            text-align: center;
+            padding: 40px 0;
+        }
     </style>
 </head>
 <body>
@@ -350,8 +370,14 @@
             <span>v1.0</span>
         </div>
 
+        <!-- ===== LOADING VIEW ===== -->
+        <div id="loading-view" class="loading-container">
+            <div class="spinner"></div>
+            <p style="color: #7a6f67; margin-top: 10px;">Loading admin session...</p>
+        </div>
+
         <!-- ===== LOGIN VIEW ===== -->
-        <div id="admin-login-view">
+        <div id="admin-login-view" style="display:none;">
             <div class="admin-login">
                 <div class="lock-icon">🔐</div>
                 <h2 style="margin-bottom:16px;">Admin Access</h2>
@@ -435,6 +461,7 @@
             const ADMIN_PASSWORD = 'Jimmy@54321';
 
             // ===== DOM REFS =====
+            const loadingView = document.getElementById('loading-view');
             const adminLoginView = document.getElementById('admin-login-view');
             const adminDashboard = document.getElementById('admin-dashboard');
             const adminPassword = document.getElementById('adminPassword');
@@ -462,8 +489,41 @@
             let refreshInterval = null;
 
             // ============================================================
+            // SESSION MANAGEMENT (localStorage)
+            // ============================================================
+
+            function saveAdminSession() {
+                try {
+                    localStorage.setItem('tilapia_admin_session', 'true');
+                    console.log('💾 Admin session saved');
+                } catch (err) {
+                    console.error('Error saving admin session:', err);
+                }
+            }
+
+            function loadAdminSession() {
+                try {
+                    const session = localStorage.getItem('tilapia_admin_session');
+                    return session === 'true';
+                } catch (err) {
+                    console.error('Error loading admin session:', err);
+                    return false;
+                }
+            }
+
+            function clearAdminSession() {
+                try {
+                    localStorage.removeItem('tilapia_admin_session');
+                    console.log('🗑️ Admin session cleared');
+                } catch (err) {
+                    console.error('Error clearing admin session:', err);
+                }
+            }
+
+            // ============================================================
             // API CALLS
             // ============================================================
+
             async function fetchOrders() {
                 try {
                     const res = await fetch(`${API_URL}/orders`);
@@ -516,8 +576,13 @@
             // ============================================================
 
             function formatTimestamp(iso) {
-                const d = new Date(iso);
-                return d.toLocaleString('en-KE', { hour12: true });
+                if (!iso) return 'N/A';
+                try {
+                    const d = new Date(iso);
+                    return d.toLocaleString('en-KE', { hour12: true });
+                } catch {
+                    return iso;
+                }
             }
 
             function getStageBadgeClass(stage) {
@@ -536,7 +601,7 @@
 
             async function renderAdminOrders() {
                 const orders = await fetchOrders();
-                orders.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                orders.sort((a, b) => new Date(a.createdAt || a.timestamp) - new Date(b.createdAt || b.timestamp));
 
                 orderCount.textContent = `${orders.length} order${orders.length !== 1 ? 's' : ''}`;
 
@@ -567,28 +632,37 @@
                     <tbody>`;
 
                 orders.forEach((o) => {
+                    const orderId = o.orderId || o.order_id;
+                    const size = o.size;
+                    const price = o.price;
+                    const phone = o.phoneNumber || o.phone_number;
+                    const area = o.deliveryArea || o.delivery_area || '—';
+                    const stage = o.orderStage || o.order_stage || 'Order Received';
+                    const fry = o.fryStatus || o.fry_status || 'Not Fried';
+                    const time = o.createdAt || o.created_at || o.timestamp;
+
                     html += `
                         <tr>
-                            <td class="order-id-col">#${o.orderId}</td>
-                            <td>${o.size}</td>
-                            <td>KES ${o.price}</td>
-                            <td>${o.phoneNumber}</td>
-                            <td class="loc-col" title="${o.deliveryArea || ''}">${o.deliveryArea || '—'}</td>
+                            <td class="order-id-col">#${orderId}</td>
+                            <td>${size}</td>
+                            <td>KES ${price}</td>
+                            <td>${phone}</td>
+                            <td class="loc-col" title="${area}">${area}</td>
                             <td>
-                                <select class="admin-stage-select" data-orderid="${o.orderId}">
-                                    <option value="Order Received" ${o.orderStage === 'Order Received' ? 'selected' : ''}>Order Received</option>
-                                    <option value="Processing" ${o.orderStage === 'Processing' ? 'selected' : ''}>Processing</option>
-                                    <option value="Ready for Pickup" ${o.orderStage === 'Ready for Pickup' ? 'selected' : ''}>Ready for Pickup</option>
-                                    <option value="Delivered" ${o.orderStage === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                <select class="admin-stage-select" data-orderid="${orderId}">
+                                    <option value="Order Received" ${stage === 'Order Received' ? 'selected' : ''}>Order Received</option>
+                                    <option value="Processing" ${stage === 'Processing' ? 'selected' : ''}>Processing</option>
+                                    <option value="Ready for Pickup" ${stage === 'Ready for Pickup' ? 'selected' : ''}>Ready for Pickup</option>
+                                    <option value="Delivered" ${stage === 'Delivered' ? 'selected' : ''}>Delivered</option>
                                 </select>
                             </td>
                             <td>
-                                <select class="admin-fry-select" data-orderid="${o.orderId}">
-                                    <option value="Not Fried" ${o.fryStatus === 'Not Fried' ? 'selected' : ''}>Not Fried</option>
-                                    <option value="Fried" ${o.fryStatus === 'Fried' ? 'selected' : ''}>Fried</option>
+                                <select class="admin-fry-select" data-orderid="${orderId}">
+                                    <option value="Not Fried" ${fry === 'Not Fried' ? 'selected' : ''}>Not Fried</option>
+                                    <option value="Fried" ${fry === 'Fried' ? 'selected' : ''}>Fried</option>
                                 </select>
                             </td>
-                            <td style="font-size:11px; color:#7a6f67;">${o.createdAt || formatTimestamp(o.timestamp)}</td>
+                            <td style="font-size:11px; color:#7a6f67;">${formatTimestamp(time)}</td>
                         </tr>
                     `;
                 });
@@ -598,13 +672,15 @@
 
                 document.querySelectorAll('.admin-stage-select').forEach((sel) => {
                     sel.addEventListener('change', function() {
-                        updateOrder(this.dataset.orderid, { orderStage: this.value });
+                        const oid = this.dataset.orderid;
+                        updateOrder(oid, { orderStage: this.value });
                     });
                 });
 
                 document.querySelectorAll('.admin-fry-select').forEach((sel) => {
                     sel.addEventListener('change', function() {
-                        updateOrder(this.dataset.orderid, { fryStatus: this.value });
+                        const oid = this.dataset.orderid;
+                        updateOrder(oid, { fryStatus: this.value });
                     });
                 });
             }
@@ -634,13 +710,14 @@
                     <tbody>`;
 
                 customers.forEach((c) => {
-                    const date = new Date(c.createdAt);
-                    const registered = date.toLocaleDateString('en-KE') + ' ' + date.toLocaleTimeString('en-KE', { hour12: true });
+                    const name = c.name || 'Customer';
+                    const phone = c.phoneNumber || c.phone_number;
+                    const time = c.createdAt || c.created_at;
                     html += `
                         <tr>
-                            <td><strong>${c.name || 'Customer'}</strong></td>
-                            <td>${c.phoneNumber}</td>
-                            <td style="font-size:12px; color:#7a6f67;">${registered}</td>
+                            <td><strong>${name}</strong></td>
+                            <td>${phone}</td>
+                            <td style="font-size:12px; color:#7a6f67;">${formatTimestamp(time)}</td>
                         </tr>
                     `;
                 });
@@ -652,6 +729,7 @@
             // ============================================================
             // PASSWORD RESET
             // ============================================================
+
             async function handleResetPassword() {
                 const phone = resetPhone.value.trim();
                 const newPassword = resetPassword.value.trim();
@@ -679,7 +757,6 @@
                     resetFeedback.textContent = '✅ ' + result.message;
                     resetFeedback.style.color = '#27ae60';
                     resetPassword.value = '';
-                    // Refresh customer list
                     renderCustomers();
                 }
             }
@@ -687,12 +764,15 @@
             // ============================================================
             // ADMIN LOGIN / LOGOUT
             // ============================================================
+
             function adminLogin() {
                 const pwd = adminPassword.value.trim();
                 if (pwd === ADMIN_PASSWORD) {
                     isAdminLoggedIn = true;
+                    saveAdminSession();
                     adminLoginView.style.display = 'none';
                     adminDashboard.style.display = 'block';
+                    loadingView.style.display = 'none';
                     loginError.textContent = '';
                     renderAdminOrders();
                     renderCustomers();
@@ -713,19 +793,49 @@
 
             function adminLogout() {
                 isAdminLoggedIn = false;
+                clearAdminSession();
                 if (refreshInterval) {
                     clearInterval(refreshInterval);
                     refreshInterval = null;
                 }
                 adminLoginView.style.display = 'block';
                 adminDashboard.style.display = 'none';
+                loadingView.style.display = 'none';
                 adminPassword.value = '';
                 loginError.textContent = '';
             }
 
             // ============================================================
+            // AUTO-LOGIN ON PAGE LOAD (Session Persistence)
+            // ============================================================
+
+            function restoreAdminSession() {
+                const sessionExists = loadAdminSession();
+                if (sessionExists) {
+                    console.log('🔄 Restoring admin session...');
+                    isAdminLoggedIn = true;
+                    adminLoginView.style.display = 'none';
+                    adminDashboard.style.display = 'block';
+                    loadingView.style.display = 'none';
+                    renderAdminOrders();
+                    renderCustomers();
+
+                    if (refreshInterval) clearInterval(refreshInterval);
+                    refreshInterval = setInterval(() => {
+                        if (isAdminLoggedIn) {
+                            renderAdminOrders();
+                            renderCustomers();
+                        }
+                    }, 15000);
+                    return true;
+                }
+                return false;
+            }
+
+            // ============================================================
             // TAB SWITCHING
             // ============================================================
+
             function switchAdminTab(tabId) {
                 adminTabs.forEach((btn) => {
                     btn.classList.toggle('active', btn.dataset.tab === tabId);
@@ -738,6 +848,7 @@
             // ============================================================
             // EVENT LISTENERS
             // ============================================================
+
             adminLoginBtn.addEventListener('click', adminLogin);
             adminPassword.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') adminLogin();
@@ -755,8 +866,23 @@
                 });
             });
 
+            // ============================================================
+            // INIT
+            // ============================================================
+
             console.log('🔐 Admin App ready.');
             console.log('📱 API URL:', API_URL);
+
+            // Try to restore session
+            const sessionRestored = restoreAdminSession();
+
+            if (!sessionRestored) {
+                // No session, show login view
+                loadingView.style.display = 'none';
+                adminLoginView.style.display = 'block';
+                adminDashboard.style.display = 'none';
+                console.log('👤 No admin session found, showing login');
+            }
 
         })();
     </script>
